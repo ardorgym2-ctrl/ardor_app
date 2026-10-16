@@ -1,5 +1,5 @@
 /* 아르더짐 서비스 워커: 알림 수신 + 오프라인 안내. 건강정보·API 응답은 절대 캐시하지 않는다. */
-const SHELL = 'ardor-shell-v1';
+const SHELL = 'ardor-shell-v2';
 const SHELL_FILES = ['/', '/offline.html', '/icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {
