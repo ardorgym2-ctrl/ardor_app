@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>아르더짐 회원 체크</title>
-<meta name="theme-color" content="#C94410">
+<meta name="theme-color" content="#F9F9EF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1D1814" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -15,45 +16,51 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 /* 레이아웃: 회원 화면은 폰 폭 한 칼럼 체크 시트, 직원 화면은 주의 순 목록에서 회원 상세로 들어가는 구조 */
 :root {
-  --bg: #EDF0F2;
-  --surface: #FFFFFF;
-  --surface-2: #E1E7EB;
-  --ink: #12202B;
-  --ink-2: #51606C;
-  --line: #D3DADF;
-  --accent: #C94410;
+  /* 아르더짐 브랜드: 크림 바탕 + 브라운(#955C3E). 로고 이미지에서 직접 추출 */
+  --bg: #F9F9EF;
+  --surface: #FFFFFC;
+  --surface-2: #F0EDDF;
+  --ink: #33231A;
+  --ink-2: #6B5A4D;
+  --line: #E4DECB;
+  --accent: #955C3E;
+  --accent-deep: #7A4A31;
   --accent-ink: #FFFFFF;
-  --accent-soft: #FBE4D8;
-  --good: #1A7048;
-  --good-soft: #D9F0E4;
-  --warn: #85560A;
-  --warn-soft: #FAEAC6;
-  --bad: #A3202F;
-  --bad-soft: #F7D9D6;
-  --carb: #17808A;
-  --prot: #5651CC;
-  --fatc: #A87A08;
-  --display: 'Barlow Condensed', 'Noto Sans KR', system-ui, sans-serif;
+  --accent-soft: #F1E4D8;
+  --good: #46724D;
+  --good-soft: #E1EEDD;
+  --warn: #8A5A12;
+  --warn-soft: #F7E9C8;
+  --bad: #A93A2C;
+  --bad-soft: #F6DAD3;
+  --carb: #C99A38;
+  --prot: #5E8C8A;
+  --fatc: #B5654F;
+  --shadow: 0 1px 2px rgba(80, 50, 30, .05), 0 10px 28px -14px rgba(80, 50, 30, .22);
+  --caps: 'Cinzel', 'Gowun Batang', serif;
+  --display: 'Gowun Batang', 'Noto Sans KR', serif;
   --body: 'Noto Sans KR', system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0E161C; --surface: #16212A; --surface-2: #22313C; --ink: #E8EEF2; --ink-2: #9DAEBA; --line: #2A3A46;
-    --accent: #FF7A3D; --accent-ink: #22100A; --accent-soft: #3A2218;
-    --good: #52C990; --good-soft: #143427; --warn: #E6B450; --warn-soft: #3A2F14; --bad: #FF8A7A; --bad-soft: #3F201D;
-    --carb: #4FC1CC; --prot: #9A97F5; --fatc: #E3B83A;
+    --bg: #1D1814; --surface: #28211C; --surface-2: #332A23; --ink: #F4ECDD; --ink-2: #BDAE9D; --line: #3C3129;
+    --accent: #D39A78; --accent-deep: #E4B193; --accent-ink: #1F1209; --accent-soft: #3B2A20;
+    --good: #8DBB8F; --good-soft: #243126; --warn: #E3B964; --warn-soft: #3A2F18; --bad: #F09A8B; --bad-soft: #3F2420;
+    --carb: #DDB65A; --prot: #7FB0AD; --fatc: #D68B74;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .25), 0 10px 28px -14px rgba(0, 0, 0, .6);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0E161C; --surface: #16212A; --surface-2: #22313C; --ink: #E8EEF2; --ink-2: #9DAEBA; --line: #2A3A46;
-  --accent: #FF7A3D; --accent-ink: #22100A; --accent-soft: #3A2218;
-  --good: #52C990; --good-soft: #143427; --warn: #E6B450; --warn-soft: #3A2F14; --bad: #FF8A7A; --bad-soft: #3F201D;
-  --carb: #4FC1CC; --prot: #9A97F5; --fatc: #E3B83A;
+  --bg: #1D1814; --surface: #28211C; --surface-2: #332A23; --ink: #F4ECDD; --ink-2: #BDAE9D; --line: #3C3129;
+  --accent: #D39A78; --accent-deep: #E4B193; --accent-ink: #1F1209; --accent-soft: #3B2A20;
+  --good: #8DBB8F; --good-soft: #243126; --warn: #E3B964; --warn-soft: #3A2F18; --bad: #F09A8B; --bad-soft: #3F2420;
+  --carb: #DDB65A; --prot: #7FB0AD; --fatc: #D68B74;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .25), 0 10px 28px -14px rgba(0, 0, 0, .6);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -380,37 +387,124 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 #lb { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .82); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; }
 #lb img { max-width: 100%; max-height: 80vh; border-radius: 8px; }
 .dotm { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: 5px; vertical-align: middle; }
+
+/* ===== 브랜드 스타일(아르더짐): 크림 바탕 · 브라운 포인트 · 명조 제목 ===== */
+body { font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+h1, h2 { font-family: var(--display); letter-spacing: -.005em; }
+body.pre-auth .top { display: none; }
+body.pre-auth { padding-block: 0 40px; }
+.top { background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom-color: transparent; box-shadow: 0 1px 0 var(--line); }
+.brand { gap: 8px; align-items: baseline; }
+.brand b { font: 700 17px/1 var(--caps); letter-spacing: .06em; color: var(--accent); }
+.brand small { font-size: 12px; color: var(--ink-2); }
+.acct { color: var(--ink-2); }
+.iconbtn { border-color: transparent; background: transparent; color: var(--ink-2); }
+.iconbtn:hover, .iconbtn:focus-visible { background: var(--accent-soft); color: var(--accent); outline: 0; }
+#logoutBtn { border-color: transparent; background: transparent; color: var(--ink-2); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; padding: 0 6px; }
+
+/* 로그인 · 가입: 로고 구성을 그대로 */
+.login { margin-top: 0; padding-top: 12vh; }
+#joinView.login { padding-top: 7vh; }
+.hero { text-align: center; margin-bottom: 26px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.hero b { font: 700 clamp(34px, 10vw, 46px)/1 var(--caps); letter-spacing: .02em; color: var(--accent); }
+.hero span { font: 400 15px/1.4 var(--display); color: var(--accent); }
+.login-card { border: 0; border-radius: 22px; box-shadow: var(--shadow); padding: 26px 22px; }
+.login-card h1 { font-size: 22px; }
+.newhere { border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.newhere .btn { width: 100%; }
+.eyebrow { font: 500 13px var(--body); letter-spacing: .01em; text-transform: none; color: var(--ink-2); }
+#joinEyebrow { color: var(--accent); font-weight: 700; }
+#joinEyebrow:empty { display: none; }
+.sel { height: 46px; border-radius: 12px; padding: 0 12px; }
+.f > .sel { flex: none; width: 100%; }
+.sel:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); outline: 0; }
+
+/* 홈 */
+.hello h1 { font-size: 27px; font-weight: 700; margin-top: 4px; }
+.prog .bar { height: 6px; }
+#progFill.good { background: var(--accent); }
+.prog-t b { font: 700 20px var(--display); }
+.sec-h h2 { font-size: 20px; }
+.dcard { border: 0; border-radius: 20px; padding: 18px; box-shadow: var(--shadow); }
+.dcard h3 { font-weight: 500; font-size: 14px; }
+.d-big { font: 700 44px/1 var(--display); letter-spacing: -.01em; }
+.d-big small { font: 500 15px var(--body); }
+.d-goalbar { height: 8px; }
+.d-goalbar i { background: linear-gradient(90deg, var(--accent-deep), var(--accent)); }
+.d-stat { background: var(--accent-soft); border-radius: 12px; }
+.d-stat b { font: 700 18px var(--display); }
+.d-seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.d-leg b { font: 700 16px var(--display); }
+.stk { height: 14px; }
+.stk i + i { box-shadow: inset 2px 0 0 var(--surface); }
+.sumlist button { border: 0; border-radius: 14px; box-shadow: var(--shadow); padding: 15px 16px; transition: transform .12s; }
+.sumlist button:active { transform: scale(.985); }
+.sumlist .st { font-size: 13px; }
+
+/* 입력 · 버튼 · 선택 */
+.inp, .txt { border-radius: 12px; }
+.inp:focus-within, .txt:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.inp input { font: 700 22px var(--display); }
+.btn { border-radius: 12px; transition: background-color .15s, transform .1s; }
+.btn:active { transform: translateY(1px); }
+.btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+.btn.sm { border-radius: 10px; }
+.opt, .rate button { border-radius: 12px; }
+.opt[aria-pressed="true"], .chip[aria-pressed="true"], .rate button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.rate button { font: 700 20px var(--display); }
+.more { border-radius: 12px; }
+.meal, .nutri { border: 0; border-radius: 18px; box-shadow: var(--shadow); }
+.meal-h h3 { font-family: var(--display); font-size: 18px; }
+.cs, .ik-sens { border-radius: 14px; }
+.consent input { accent-color: var(--accent); }
+
+/* 하단 메뉴 */
+.tabbar { border-top: 0; box-shadow: 0 -1px 0 var(--line), 0 -12px 28px -18px rgba(80, 50, 30, .25); background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(10px); }
+.tabbar button { font-weight: 500; gap: 3px; }
+.tabbar button svg { padding: 3px 14px; box-sizing: content-box; width: 22px; height: 22px; border-radius: 999px; transition: background-color .18s; }
+.tabbar button[aria-current="page"] { font-weight: 700; }
+.tabbar button[aria-current="page"] svg { background: var(--accent-soft); }
+.tabbar .bdg { background: var(--accent); color: var(--accent-ink); left: calc(50% + 8px); top: 2px; }
+
+/* 직원 화면 */
+.stats, .invite, .row { border: 0; box-shadow: var(--shadow); }
+.stats { border-radius: 16px; }
+.row { border-radius: 14px; }
+.row:hover { box-shadow: 0 0 0 1.5px var(--accent), var(--shadow); }
+.stat b { font: 700 28px/1.15 var(--display); }
+.who b { font-family: var(--display); font-size: 17px; }
 </style>
 </head>
 <body>
 
 <header class="top">
   <div class="top-in">
-    <div class="brand"><span class="mark" aria-hidden="true">A</span><div><b>ARDOR GYM</b><small>회원 체크</small></div></div>
+    <div class="brand"><b>ARDOR GYM</b><small>회원 체크</small></div>
     <div class="acct" id="acctBar" hidden><span id="acctName"></span><button type="button" class="iconbtn" id="setBtn" aria-label="설정" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button><button type="button" class="btn sm" id="logoutBtn">로그아웃</button></div>
   </div>
 </header>
 
 <main id="loginView" class="login">
+  <div class="hero"><b>ARDOR GYM</b><span>친절하고 다정한 이웃, PT전문 아르더짐</span></div>
   <div class="login-card">
-    <div><p class="eyebrow">ARDOR GYM</p><h1>로그인</h1></div>
+    <h1>로그인</h1>
     <form id="loginForm" autocomplete="off">
       <div class="f"><label for="l_id">아이디</label><input id="l_id" class="txt big" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="아이디"></div>
       <div class="f"><label for="l_pw">비밀번호</label><input id="l_pw" class="txt big" type="password" placeholder="비밀번호"></div>
       <p class="err" id="loginErr" hidden>아이디나 비밀번호가 맞지 않아요.</p>
       <button class="btn primary" type="submit">로그인</button>
     </form>
-    <details class="more" open>
-      <summary>처음이세요? 회원가입</summary>
-      <p class="hint" style="margin-top:10px" id="selfHint">이름과 지점을 고르고, 아이디와 비밀번호만 정하면 바로 시작할 수 있어요.</p>
-      <button type="button" class="btn primary" id="j_self" style="margin-top:10px">회원 가입하기</button>
-    </details>
+    <div class="newhere">
+      <p class="hint" id="selfHint">처음이세요? 이름과 지점을 고르고, 아이디와 비밀번호만 정하면 바로 시작할 수 있어요.</p>
+      <button type="button" class="btn" id="j_self">회원 가입하기</button>
+    </div>
   </div>
 </main>
 
 <main id="joinView" class="login" hidden>
+  <div class="hero"><b>ARDOR GYM</b><span>친절하고 다정한 이웃, PT전문 아르더짐</span></div>
   <div class="login-card">
-    <div><p class="eyebrow" id="joinEyebrow">ARDOR GYM</p><h1 id="joinTitle">회원 가입</h1></div>
+    <div><p class="eyebrow" id="joinEyebrow"></p><h1 id="joinTitle">회원 가입</h1></div>
     <p class="hint" id="joinInfo"></p>
     <form id="joinForm" autocomplete="off" hidden>
       <div class="f"><label for="j_name">이름</label><input id="j_name" class="txt big" type="text" readonly maxlength="20" autocomplete="off"></div>
@@ -1681,7 +1775,7 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   function route() {
     var joinOn = !!joinToken || openMode;
     $('joinView').hidden = !joinOn; $('loginView').hidden = joinOn || !!cur;
-    $('memberView').hidden = joinOn || !cur || cur.role !== 'member'; $('tabbar').hidden = $('memberView').hidden; document.body.classList.toggle('has-tabs', !$('tabbar').hidden); $('setBtn').hidden = $('memberView').hidden; $('staffView').hidden = joinOn || !cur || cur.role !== 'staff'; $('acctBar').hidden = joinOn || !cur;
+    $('memberView').hidden = joinOn || !cur || cur.role !== 'member'; $('tabbar').hidden = $('memberView').hidden; document.body.classList.toggle('has-tabs', !$('tabbar').hidden); document.body.classList.toggle('pre-auth', joinOn || !cur); $('setBtn').hidden = $('memberView').hidden; $('staffView').hidden = joinOn || !cur || cur.role !== 'staff'; $('acctBar').hidden = joinOn || !cur;
     window.scrollTo(0, 0);
   }
   async function enter(p) {
@@ -1761,7 +1855,7 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     if (openMode) {
       if (!sb) { info.textContent = '앱 설정이 아직 끝나지 않았어요. 관리자에게 알려 주세요.'; return; }
       if (OPEN_ON === false) { info.textContent = '지금은 초대 링크로만 가입할 수 있어요. 직원에게 링크를 요청해 주세요.'; return; }
-      $('joinEyebrow').textContent = 'ARDOR GYM'; $('joinTitle').textContent = '회원 가입';
+      $('joinEyebrow').textContent = ''; $('joinTitle').textContent = '회원 가입';
       info.textContent = '이름과 지점을 고르고, 아이디와 비밀번호를 정하면 바로 시작할 수 있어요.';
       $('intake').hidden = false; $('sensWrap').hidden = false; f.hidden = false; return;
     }
@@ -1771,7 +1865,7 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     if (JOIN.status === 'none') { info.textContent = '없는 초대 링크예요. 직원에게 새 링크를 요청해 주세요.'; return; }
     if (JOIN.status === 'used') { info.textContent = '이미 사용한 초대 링크예요. 로그인하거나 직원에게 새 링크를 요청해 주세요.'; return; }
     var isMember = JOIN.role === 'member', bn = BRANCH[JOIN.branch] || '';
-    $('joinEyebrow').textContent = 'ARDOR GYM ' + bn; $('joinTitle').textContent = isMember ? '회원 가입' : '직원 가입';
+    $('joinEyebrow').textContent = bn; $('joinTitle').textContent = isMember ? '회원 가입' : '직원 가입';
     info.textContent = JOIN.name + ' 님, 아르더짐 ' + bn + (isMember ? '에 오신 걸 환영해요. 아이디와 비밀번호만 정하면 바로 시작할 수 있어요.' : ' 직원 계정을 만들어요. 아이디와 비밀번호를 정해 주세요.');
     $('j_name').value = JOIN.name; $('intake').hidden = !isMember; $('sensWrap').hidden = !isMember; f.hidden = false;
   }
