@@ -3,6 +3,6 @@
 window.ARDOR_CONFIG = {
      SUPABASE_URL: 'https://ozmpnwmcmwiyethxjdwa.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96bXBud21jbXdpeWV0aHhqZHdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwOTM5OTQsImV4cCI6MjEwNzY2OTk5NH0.gAWQ978piErvcF9KwASeMg24aucJ-LYd8o25GXCPZi0',                     // 같은 화면의 anon public 키
-  EMAIL_DOMAIN: 'ardorgym.app',                           // 회원 아이디를 내부 로그인용 이메일로 바꿀 때 쓰는 도메인(실제 메일은 안 보냅니다). 실제 운영 도메인을 권장
+EMAIL_DOMAIN: 'gmail.com',                          // 회원 아이디를 내부 로그인용 이메일로 바꿀 때 쓰는 도메인(실제 메일은 안 보냅니다). 실제 운영 도메인을 권장
   VAPID_PUBLIC_KEY: 'YOUR_VAPID_PUBLIC_KEY'               // 푸시 알림용 공개키. 아직 없으면 그대로 두세요(알림 칸이 숨겨집니다)
 };
