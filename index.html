@@ -350,9 +350,14 @@ h1, h2, h3, p { margin: 0; }
     </form>
     <details class="more" open>
       <summary>처음이세요? 회원가입</summary>
-      <p class="hint" style="margin-top:10px">직원에게 받은 초대 링크를 누르면 가입 화면이 바로 열려요. 링크를 눌러도 안 열리면 아래에 링크를 붙여넣어 주세요.</p>
-      <div class="f" style="margin-top:12px"><label for="j_code">받은 링크를 붙여넣어 주세요</label><input id="j_code" class="txt" type="text" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
-      <button type="button" class="btn sm" id="j_open" style="margin-top:8px">가입 화면 열기</button>
+      <p class="hint" style="margin-top:10px" id="selfHint">이름과 지점을 고르고, 아이디와 비밀번호만 정하면 바로 시작할 수 있어요.</p>
+      <button type="button" class="btn primary" id="j_self" style="margin-top:10px">회원 가입하기</button>
+      <details class="more" style="margin-top:14px">
+        <summary>직원에게 초대 링크를 받았어요</summary>
+        <p class="hint" style="margin-top:10px">링크를 누르면 가입 화면이 바로 열려요. 안 열리면 아래에 붙여넣어 주세요.</p>
+        <div class="f" style="margin-top:12px"><label for="j_code">받은 링크</label><input id="j_code" class="txt" type="text" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
+        <button type="button" class="btn sm" id="j_open" style="margin-top:8px">가입 화면 열기</button>
+      </details>
     </details>
   </div>
 </main>
@@ -362,7 +367,8 @@ h1, h2, h3, p { margin: 0; }
     <div><p class="eyebrow" id="joinEyebrow">ARDOR GYM</p><h1 id="joinTitle">회원 가입</h1></div>
     <p class="hint" id="joinInfo"></p>
     <form id="joinForm" autocomplete="off" hidden>
-      <div class="f"><label for="j_name">이름</label><input id="j_name" class="txt big" type="text" readonly></div>
+      <div class="f"><label for="j_name">이름</label><input id="j_name" class="txt big" type="text" readonly maxlength="20" autocomplete="off"></div>
+      <div class="f" id="j_branchWrap" hidden><label for="j_branch">다니는 지점</label><select id="j_branch" class="sel"><option value="">선택해 주세요</option><option value="mangpo">망포점</option><option value="seocheon">서천점</option></select></div>
       <div class="f"><label for="j_id">아이디</label><input id="j_id" class="txt big" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="영문 소문자와 숫자 4~16자"></div>
       <div class="f"><label for="j_pw">비밀번호</label><input id="j_pw" class="txt big" type="password" placeholder="8자 이상" autocomplete="new-password"></div>
       <div class="f"><label for="j_pw2">비밀번호 확인</label><input id="j_pw2" class="txt big" type="password" autocomplete="new-password"></div>
@@ -1291,7 +1297,7 @@ h1, h2, h3, p { margin: 0; }
   /* ---------- 데이터 불러오기 (Supabase) ---------- */
   var PH = {}, FBK = {}, INV = {}, INTAKE = {}, URLC = {}, selDate = todayKey, fbNote = '';
   var loading = false, reloadAgain = false, reloadTimer = null, chan = null, pollTimer = null, formReady = false;
-  var sb = null, cur = null, cfg = window.ARDOR_CONFIG || {};
+  var OPEN_ON = null, sb = null, cur = null, cfg = window.ARDOR_CONFIG || {};
   var EMAIL_DOMAIN = cfg.EMAIL_DOMAIN || 'ardorgym.app';
   var emailOf = function (id) { return id + '@' + EMAIL_DOMAIN; };
   var LOGIN_RE = /^[a-z][a-z0-9_-]{3,15}$/;
@@ -1456,9 +1462,9 @@ h1, h2, h3, p { margin: 0; }
 
 
   /* ---------- 로그인 · 세션 ---------- */
-  var joinToken = null, JOIN = null, joining = false;
+  var joinToken = null, JOIN = null, joining = false, openMode = false;
   function route() {
-    var joinOn = !!joinToken;
+    var joinOn = !!joinToken || openMode;
     $('joinView').hidden = !joinOn; $('loginView').hidden = joinOn || !!cur;
     $('memberView').hidden = joinOn || !cur || cur.role !== 'member'; $('staffView').hidden = joinOn || !cur || cur.role !== 'staff'; $('acctBar').hidden = joinOn || !cur;
     window.scrollTo(0, 0);
@@ -1536,6 +1542,14 @@ h1, h2, h3, p { margin: 0; }
   }
   function renderJoin() {
     var f = $('joinForm'), info = $('joinInfo'); f.hidden = true;
+    $('j_name').readOnly = !openMode; $('j_branchWrap').hidden = !openMode;
+    if (openMode) {
+      if (!sb) { info.textContent = '앱 설정이 아직 끝나지 않았어요. 관리자에게 알려 주세요.'; return; }
+      if (OPEN_ON === false) { info.textContent = '지금은 초대 링크로만 가입할 수 있어요. 직원에게 링크를 요청해 주세요.'; return; }
+      $('joinEyebrow').textContent = 'ARDOR GYM'; $('joinTitle').textContent = '회원 가입';
+      info.textContent = '이름과 지점을 고르고, 아이디와 비밀번호를 정하면 바로 시작할 수 있어요.';
+      $('intake').hidden = false; $('sensWrap').hidden = false; f.hidden = false; return;
+    }
     if (!sb) { info.textContent = '앱 설정이 아직 끝나지 않았어요. 관리자에게 알려 주세요.'; return; }
     if (!JOIN) { info.textContent = '초대 정보를 확인하는 중이에요…'; return; }
     if (JOIN.status === 'error') { info.textContent = '초대 정보를 확인하지 못했어요. 잠시 뒤 링크를 다시 열어 주세요.'; return; }
@@ -1547,12 +1561,18 @@ h1, h2, h3, p { margin: 0; }
     $('j_name').value = JOIN.name; $('intake').hidden = !isMember; $('sensWrap').hidden = !isMember; f.hidden = false;
   }
   async function openJoin(t) {
-    joinToken = t; JOIN = null; $('joinErr').hidden = true; renderJoin(); route();
+    openMode = false; joinToken = t; JOIN = null; $('joinErr').hidden = true; renderJoin(); route();
     if (!sb) return;
     var r = await sb.rpc('peek_invite', { p_token: t });
     if (joinToken !== t) return;
     JOIN = r.error || !r.data ? { status: 'error' } : r.data; renderJoin();
   }
+  async function openSelf() {
+    openMode = true; joinToken = null; JOIN = null; $('joinErr').hidden = true; renderJoin(); route();
+    if (!sb || OPEN_ON !== null) return;
+    var r = await sb.rpc('open_signup_on'); OPEN_ON = r.error ? true : r.data !== false; if (openMode) renderJoin();
+  }
+  $('j_self').addEventListener('click', openSelf);
   $('invBtn').addEventListener('click', async function () {
     var name = $('inv_name').value.trim(); $('invMsg').textContent = '';
     if (!name) { $('invMsg').textContent = '이름을 입력해 주세요.'; return; }
@@ -1572,9 +1592,12 @@ h1, h2, h3, p { margin: 0; }
     }
   });
   $('joinForm').addEventListener('submit', async function (e) {
-    e.preventDefault(); if (joining || !sb || !JOIN || JOIN.status !== 'ok') return;
+    e.preventDefault(); if (joining || !sb || (!openMode && (!JOIN || JOIN.status !== 'ok'))) return;
     var err = function (m) { $('joinErr').textContent = m; $('joinErr').hidden = false; };
-    var id = $('j_id').value.trim().toLowerCase(), pw = $('j_pw').value, isMember = JOIN.role === 'member';
+    var id = $('j_id').value.trim().toLowerCase(), pw = $('j_pw').value, isMember = openMode || JOIN.role === 'member';
+    var nm = $('j_name').value.trim(), br = $('j_branch').value;
+    if (openMode && !nm) { err('이름을 입력해 주세요.'); return; }
+    if (openMode && !br) { err('다니는 지점을 골라 주세요.'); return; }
     if (!LOGIN_RE.test(id)) { err('아이디는 영문 소문자로 시작하는 4~16자(숫자, -, _ 가능)로 만들어 주세요.'); return; }
     if (pw.length < 8) { err('비밀번호는 8자 이상으로 정해 주세요.'); return; }
     if (pw !== $('j_pw2').value) { err('비밀번호가 서로 달라요.'); return; }
@@ -1582,13 +1605,13 @@ h1, h2, h3, p { margin: 0; }
     if (!$('j_priv').checked) { err('개인정보 수집·이용에 동의해야 가입할 수 있어요.'); return; }
     $('joinErr').hidden = true; joining = true; $('joinBtn').disabled = true;
     try {
-      var r = await sb.auth.signUp({ email: emailOf(id), password: pw, options: { data: { invite: joinToken, login_id: id } } });
+      var r = await sb.auth.signUp({ email: emailOf(id), password: pw, options: { data: openMode ? { login_id: id, name: nm, branch: br } : { invite: joinToken, login_id: id } } });
       if (r.error) {
         var m = String(r.error.message || '');
         if (/already|registered|exists/i.test(m)) err('이미 쓰는 아이디예요. 다른 아이디를 골라 주세요.');
         else if (/password/i.test(m)) err('비밀번호가 너무 약해요. 더 길고 복잡하게 정해 주세요.');
         else if (r.error.status === 429) err('시도가 너무 많아요. 잠시 뒤에 다시 해 주세요.');
-        else err('가입하지 못했어요. 초대 링크가 이미 쓰였을 수 있어요. 직원에게 새 링크를 요청해 주세요.');
+        else err(openMode ? '가입하지 못했어요. 잠시 뒤 다시 해 보고, 계속 안 되면 직원에게 알려 주세요.' : '가입하지 못했어요. 초대 링크가 이미 쓰였을 수 있어요. 직원에게 새 링크를 요청해 주세요.');
       } else if (!r.data || !r.data.session) {
         err('가입은 됐지만 바로 로그인되지 않았어요. 로그인 화면에서 로그인해 주세요.');
       } else {
@@ -1597,15 +1620,15 @@ h1, h2, h3, p { margin: 0; }
           var consent = ik.consent; delete ik.consent;
           await sb.from('intake').insert({ member_id: r.data.user.id, data: ik, consent: consent });
         }
-        joinToken = null; JOIN = null; clearHash(); ['j_id', 'j_pw', 'j_pw2'].forEach(function (k) { $(k).value = ''; }); resetIntake();
+        joinToken = null; JOIN = null; openMode = false; clearHash(); ['j_name', 'j_branch', 'j_id', 'j_pw', 'j_pw2'].forEach(function (k) { $(k).value = ''; }); resetIntake();
         await startSession(r.data.session);
       }
     } catch (x) { err('가입을 마치지 못했어요. 잠시 뒤 다시 눌러 주세요.'); }
     joining = false; $('joinBtn').disabled = false;
   });
-  $('joinToLogin').addEventListener('click', function () { joinToken = null; JOIN = null; clearHash(); route(); });
+  $('joinToLogin').addEventListener('click', function () { joinToken = null; JOIN = null; openMode = false; clearHash(); route(); });
   $('j_open').addEventListener('click', function () { var t = tokenFrom($('j_code').value); if (t) openJoin(t); else $('j_code').focus(); });
-  window.addEventListener('hashchange', function () { var t = tokenFrom(location.hash); if (t) openJoin(t); });
+  window.addEventListener('hashchange', function () { if (location.hash === '#join') { openSelf(); return; } var t = tokenFrom(location.hash); if (t) openJoin(t); });
 
   function keyIdx(k) { for (var i = 0; i < 7; i++) if (days7[i].k === k) return i; return -1; }
   function itemsOf(m) {
@@ -1709,11 +1732,13 @@ h1, h2, h3, p { margin: 0; }
   resetIntake(); resetMember(); renderAll();
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function () { }); }
   var startTok = tokenFrom(location.hash); if (startTok) joinToken = startTok;
+  if (!startTok && location.hash === '#join') openMode = true;
   route();
-  if (!sb) { $('loginErr').textContent = '앱 설정이 아직 끝나지 않았어요. 관리자에게 알려 주세요.'; $('loginErr').hidden = false; if (joinToken) renderJoin(); }
+  if (!sb) { $('loginErr').textContent = '앱 설정이 아직 끝나지 않았어요. 관리자에게 알려 주세요.'; $('loginErr').hidden = false; if (joinToken || openMode) renderJoin(); }
   else {
     sb.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT' && cur) leave(true); });
-    if (joinToken) openJoin(joinToken);
+    sb.rpc('open_signup_on').then(function (r) { OPEN_ON = r.error ? true : r.data !== false; if (OPEN_ON === false) { $('j_self').hidden = true; $('selfHint').textContent = '지금은 초대 링크로만 가입할 수 있어요. 직원에게 받은 링크를 아래에 붙여넣어 주세요.'; $('selfHint').parentNode.querySelector('details.more').open = true; } if (openMode) renderJoin(); }, function () { });
+    if (joinToken) openJoin(joinToken); else if (openMode) renderJoin();
     else sb.auth.getSession().then(function (r) { if (r.data && r.data.session) return startSession(r.data.session); }).catch(function () { });
   }
 })();
