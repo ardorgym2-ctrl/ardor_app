@@ -124,7 +124,10 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
 .proto { max-width: 980px; margin: 12px auto 0; font-size: 13px; color: var(--ink-2); background: var(--surface-2); border-radius: 8px; padding: 8px 12px; }
 .proto b { color: var(--ink); margin-right: 6px; }
-.acct { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; }
+.iconbtn { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); cursor: pointer; padding: 0; }
+.iconbtn[hidden] { display: none; }
+#acctName { max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
 .login { max-width: 400px; margin: 36px auto 0; }
 .login-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .login-card h1 { font-size: 24px; font-weight: 700; }
@@ -384,7 +387,7 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 <header class="top">
   <div class="top-in">
     <div class="brand"><span class="mark" aria-hidden="true">A</span><div><b>ARDOR GYM</b><small>회원 체크</small></div></div>
-    <div class="acct" id="acctBar" hidden><span id="acctName"></span><button type="button" class="btn sm" id="logoutBtn">로그아웃</button></div>
+    <div class="acct" id="acctBar" hidden><span id="acctName"></span><button type="button" class="iconbtn" id="setBtn" aria-label="설정" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button><button type="button" class="btn sm" id="logoutBtn">로그아웃</button></div>
   </div>
 </header>
 
@@ -401,12 +404,6 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       <summary>처음이세요? 회원가입</summary>
       <p class="hint" style="margin-top:10px" id="selfHint">이름과 지점을 고르고, 아이디와 비밀번호만 정하면 바로 시작할 수 있어요.</p>
       <button type="button" class="btn primary" id="j_self" style="margin-top:10px">회원 가입하기</button>
-      <details class="more" style="margin-top:14px">
-        <summary>직원에게 초대 링크를 받았어요</summary>
-        <p class="hint" style="margin-top:10px">링크를 누르면 가입 화면이 바로 열려요. 안 열리면 아래에 붙여넣어 주세요.</p>
-        <div class="f" style="margin-top:12px"><label for="j_code">받은 링크</label><input id="j_code" class="txt" type="text" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
-        <button type="button" class="btn sm" id="j_open" style="margin-top:8px">가입 화면 열기</button>
-      </details>
     </details>
   </div>
 </main>
@@ -538,7 +535,7 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 </div>
 <div class="pane" data-pane="body" hidden>
 <section class="sec" aria-labelledby="h-goal">
-    <div class="sec-h"><h2 id="h-goal">몸 수치와 목표</h2><p>아침 공복에 잰 체중이면 가장 정확해요. 몸 수치를 적고, 아래에서 목표를 정해요.</p></div>
+    <div class="sec-h"><h2 id="h-goal">오늘의 기록</h2><p>몸 수치를 적어요. 아침 공복에 잰 체중이면 가장 정확해요.</p></div>
 <div class="grid2">
       <div class="f"><label for="q_weight">체중</label><div class="inp"><input id="q_weight" type="number" inputmode="decimal" step="0.1" value="74.2"><span class="u">kg</span></div></div>
       <div class="f"><label for="q_sleep">수면 시간</label><div class="inp"><input id="q_sleep" type="number" inputmode="decimal" step="0.5" value="6.5"><span class="u">시간</span></div></div>
@@ -552,9 +549,18 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
         <div class="f"><label for="q_bf">체지방률</label><div class="inp"><input id="q_bf" type="number" inputmode="decimal" step="0.1" placeholder="예: 18.2"><span class="u">%</span></div></div>
       </div>
     </details>
-      <h3 class="sub" style="font-size:15px;font-weight:700;margin:22px 0 4px">내 목표</h3>
-    <p class="hint" style="margin-bottom:10px">목표 종류를 고르면 위 수치로 하루 칼로리와 탄·단·지를 계산해 줘요. 직접 고쳐도 돼요.</p>
-<p class="hint">위 몸 수치의 체중과 인바디 체지방률(또는 아래 성별·나이·키)로 계산해요. 성별·나이·키는 저장되지 않아요.</p>
+      </section>
+
+    <button type="button" class="btn" data-gohome style="width:100%;margin-top:22px">다 적었어요 · 제출하러 가기</button>
+</div>
+<div class="pane" data-pane="settings" hidden>
+  <section class="sec" aria-labelledby="h-set">
+    <button type="button" class="btn link sm" data-gohome style="align-self:flex-start">← 홈으로</button>
+    <div class="sec-h"><h2 id="h-set">설정</h2><p id="setWho"></p></div>
+    <p class="hint" id="setBase"></p>
+    <h3 class="sub" style="font-size:15px;font-weight:700;margin:22px 0 4px">내 목표</h3>
+    <p class="hint" style="margin-bottom:10px">목표 종류를 고르면 체중과 인바디 값으로 하루 칼로리와 탄·단·지를 계산해 줘요. 직접 고쳐도 돼요.</p>
+<p class="hint">오늘의 기록에 적은 체중과 인바디 체지방률(없으면 마지막 기록, 또는 아래 성별·나이·키)로 계산해요. 성별·나이·키는 저장되지 않아요.</p>
       <div class="chips" id="cPlan" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">
         <button type="button" class="chip" data-v="loss" aria-pressed="true">체중 감량</button>
         <button type="button" class="chip" data-v="gain" aria-pressed="false">근육량 증가</button>
@@ -580,18 +586,18 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       <div class="f"><label for="g_tw">목표 체중</label><div class="inp"><input id="g_tw" type="number" inputmode="decimal" step="0.1" placeholder="예: 72"><span class="u">kg</span></div></div>
     </div>
     <p class="hint" id="goalHint"></p>
+    <button type="button" class="btn primary" id="goalSave" style="width:100%;margin-top:6px">목표 저장</button>
+    <p class="hint" id="goalSaved" aria-live="polite"></p>
   </section>
-
-    <button type="button" class="btn" data-gohome style="width:100%;margin-top:22px">다 적었어요 · 제출하러 가기</button>
 </div>
 </main>
 
 <nav class="tabbar" id="tabbar" aria-label="회원 메뉴" hidden>
-  <button type="button" data-tab="home" aria-current="page"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg><span class="tl">오늘</span><i class="bdg" hidden></i></button>
+  <button type="button" data-tab="home" aria-current="page"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg><span class="tl">홈</span><i class="bdg" hidden></i></button>
   <button type="button" data-tab="meal"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10"/><path d="M17 3c-2 1.5-3 4-3 7h3v11"/></svg><span class="tl">식단</span><i class="bdg" hidden></i></button>
   <button type="button" data-tab="wk"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7v10M3 9v6M18 7v10M21 9v6M6 12h12"/></svg><span class="tl">운동</span><i class="bdg" hidden></i></button>
   <button type="button" data-tab="cond"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span class="tl">컨디션</span><i class="bdg" hidden></i></button>
-  <button type="button" data-tab="body"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="3"/><path d="M6 21v-5a6 6 0 0 1 12 0v5"/></svg><span class="tl">몸·목표</span><i class="bdg" hidden></i></button>
+  <button type="button" data-tab="body"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="3"/><path d="M6 21v-5a6 6 0 0 1 12 0v5"/></svg><span class="tl">오늘 기록</span><i class="bdg" hidden></i></button>
 </nav>
 
 
@@ -936,13 +942,13 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     var all = histSeries('w', 'q_weight'), g = getGoal(), el = $('dashW');
     var from = addDays(todayKey, -(dashRange - 1)), pts = all.filter(function (p) { return p.k >= from; });
     var head = '<div class="d-row"><h3>체중 변화</h3><span class="d-seg"><button type="button" data-range="30" aria-pressed="' + (dashRange === 30) + '">30일</button><button type="button" data-range="90" aria-pressed="' + (dashRange === 90) + '">90일</button></span></div>';
-    if (!all.length) { el.innerHTML = head + '<p class="d-empty">체중을 기록하면 변화 그래프가 보여요. 몸·목표 탭에서 체중을 적고 제출해 보세요.</p>'; return; }
+    if (!all.length) { el.innerHTML = head + '<p class="d-empty">체중을 기록하면 변화 그래프가 보여요. 오늘 기록 탭에서 체중을 적고 제출해 보세요.</p>'; return; }
     var cur_ = all[all.length - 1].v, start = g.sw || all[0].v, tw = g.tw || null;
     var h = head + '<div class="d-row"><span class="d-big">' + n1(cur_) + '<small>kg</small></span><span class="d-sub">시작 ' + n1(start) + 'kg 대비 <b class="' + (tw ? ((tw < start) === (cur_ < start) && cur_ !== start ? 'd-good' : '') : '') + '">' + sgn(cur_ - start) + 'kg</b></span></div>';
     if (tw && Math.abs(start - tw) >= 0.1) {
       var raw = (start - cur_) / (start - tw) * 100, pct = clamp(Math.round(raw), 0, 100), left = Math.abs(cur_ - tw), done = raw >= 100;
       h += '<div><div class="d-row"><span class="d-sub">목표 <b>' + n1(tw) + 'kg</b></span><span class="d-sub">' + (done ? '<span class="d-good">목표 달성!</span>' : '달성률 <b>' + pct + '%</b> · ' + n1(left) + 'kg 남음') + '</span></div><div class="d-goalbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '" style="margin-top:6px"><i style="width:' + pct + '%"></i></div>' + (raw < 0 ? '<p class="d-sub" style="margin-top:6px">시작 체중보다 목표와 멀어졌어요. 식단과 운동을 점검해 보세요.</p>' : '') + '</div>';
-    } else h += '<p class="d-sub">몸·목표 탭에서 <b>목표 체중</b>을 적으면 달성률이 보여요.</p>';
+    } else h += '<div class="d-row"><p class="d-sub">목표 체중을 정하면 달성률이 보여요.</p><button type="button" class="btn sm" data-open-settings>목표 체중 정하기</button></div>';
     if (pts.length >= 2) {
       h += weightChart(pts, pts[0].k > from ? pts[0].k : from, tw);
       h += '<p class="d-sub">최근 ' + dashRange + '일 변화 <b>' + sgn(pts[pts.length - 1].v - pts[0].v) + 'kg</b> · 기록 ' + pts.length + '일</p>';
@@ -972,16 +978,17 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     el.innerHTML = h;
   }
   function renderDash() { if (!cur || cur.role !== 'member') return; renderDashWeight(); renderDashMeal(); }
-  $('dashW').addEventListener('click', function (e) { var b = e.target.closest('button[data-range]'); if (b) { dashRange = +b.getAttribute('data-range'); renderDashWeight(); } });
+  $('dashW').addEventListener('click', function (e) { if (e.target.closest('[data-open-settings]')) { showTab('settings'); return; } var b = e.target.closest('button[data-range]'); if (b) { dashRange = +b.getAttribute('data-range'); renderDashWeight(); } });
 
   /* ---------- 회원 하단 메뉴 ---------- */
-  var TABS = { home: '오늘', meal: '식단', wk: '운동', cond: '컨디션', body: '몸·목표' };
+  var TABS = { home: '홈', meal: '식단', wk: '운동', cond: '컨디션', body: '오늘 기록' };
   function showTab(t) {
-    if (!TABS[t]) t = 'home';
+    if (!TABS[t] && t !== 'settings') t = 'home';
     Array.prototype.forEach.call(document.querySelectorAll('#memberView .pane'), function (el) { el.hidden = el.getAttribute('data-pane') !== t; });
     Array.prototype.forEach.call($('tabbar').querySelectorAll('button'), function (b) { if (b.getAttribute('data-tab') === t) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     window.scrollTo(0, 0);
   }
+  $('setBtn').addEventListener('click', function () { renderSettings(); showTab('settings'); });
   $('tabbar').addEventListener('click', function (e) { var b = e.target.closest('button[data-tab]'); if (b) showTab(b.getAttribute('data-tab')); });
   $('sumList').addEventListener('click', function (e) { var b = e.target.closest('button[data-go]'); if (b) showTab(b.getAttribute('data-go')); });
   Array.prototype.forEach.call(document.querySelectorAll('[data-gohome]'), function (b) { b.addEventListener('click', function () { showTab('home'); }); });
@@ -995,7 +1002,7 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       d.hidden = !n; d.textContent = n; b.setAttribute('aria-label', TABS[t] + (n ? ', 남은 항목 ' + n + '개' : ''));
     });
     var row = function (go, name, t) { var n = cnt[t] || 0, all = tot[t] || 0; return '<li><button type="button" data-go="' + go + '"><b>' + name + '</b><span class="st' + (n ? '' : ' ok') + '">' + (n ? (all - n) + ' / ' + all + ' 입력' : '완료') + '</span></button></li>'; };
-    $('sumList').innerHTML = row('meal', '식단 (아침·점심·저녁)', 'meal') + row('wk', '운동', 'wk') + row('cond', '컨디션·통증', 'cond') + row('body', '몸 수치 (체중·수면·걸음)', 'body');
+    $('sumList').innerHTML = row('meal', '식단 (아침·점심·저녁)', 'meal') + row('wk', '운동', 'wk') + row('cond', '컨디션·통증', 'cond') + row('body', '오늘의 기록 (체중·수면·걸음)', 'body');
   }
   function renderProgress() {
     var c = checklist(), done = c.filter(function (x) { return x[1]; }).length, left = c.filter(function (x) { return !x[1]; }).map(function (x) { return x[0]; });
@@ -1095,11 +1102,24 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     gain: { label: '근육량 증가', adj: 0.1, prot: 1.8, fat: 0.25 },
     keep: { label: '현재 유지', adj: 0, prot: 1.6, fat: 0.25 }
   };
+  function baseOf(key, formId) {
+    var x = parseFloat($(formId).value);
+    if (isFinite(x) && x > 0) return x;
+    for (var i = HIST.length - 1; i >= 0; i--) if (HIST[i][key] != null && HIST[i][key] > 0) return HIST[i][key];
+    return null;
+  }
+  function renderSettings() {
+    if (!cur || cur.role !== 'member') return;
+    $('setWho').textContent = cur.name + ' · ' + (BRANCH[cur.branch] || '') + ' · 아이디 ' + cur.loginId;
+    var w = baseOf('w', 'q_weight'), bf = baseOf('bf', 'q_bf');
+    $('setBase').textContent = w ? '계산에 쓰는 체중 ' + n1(w) + 'kg' + (bf ? ', 체지방률 ' + n1(bf) + '%' : '') + ' (오늘 기록 탭에 적은 값, 없으면 마지막 기록)' : '체중을 아직 안 적었어요. 오늘 기록 탭에서 체중을 먼저 적어 주세요.';
+    $('goalSaved').textContent = '';
+  }
   function calcGoal() {
     var num = function (id) { var x = parseFloat($(id).value); return isFinite(x) && x > 0 ? x : null; };
-    var w = num('q_weight'), age = num('c_age'), ht = num('c_ht'), mu = num('q_muscle'), bf = num('q_bf');
+    var w = baseOf('w', 'q_weight'), age = num('c_age'), ht = num('c_ht'), bf = baseOf('bf', 'q_bf');
     var out = $('calcOut');
-    if (!w) { out.textContent = '아래 몸 수치에 체중을 먼저 적어 주세요.'; return; }
+    if (!w) { out.textContent = '오늘 기록 탭에 체중을 먼저 적어 주세요.'; return; }
     var bmr, how;
     if (bf && bf < 60) { bmr = 370 + 21.6 * (w * (1 - bf / 100)); how = '인바디 체지방률 기준'; }
     else if (age && ht) { bmr = 10 * w + 6.25 * ht - 5 * age + ($('c_sex').value === 'm' ? 5 : -161); how = '키·나이·성별 기준'; }
@@ -1120,13 +1140,22 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   });
   function calcReady() {
     var n = function (id) { var x = parseFloat($(id).value); return isFinite(x) && x > 0; };
-    var ok = n('q_weight') && ((n('q_bf') && parseFloat($('q_bf').value) < 60) || (n('c_age') && n('c_ht')));
+    var bw = baseOf('w', 'q_weight'), bb = baseOf('bf', 'q_bf');
+    var ok = bw && ((bb && bb < 60) || (n('c_age') && n('c_ht')));
     $('calcGo').disabled = !ok;
     if (!ok) $('calcOut').textContent = '체중과 인바디 체지방률(또는 성별·나이·키)을 적으면 계산할 수 있어요.';
     else if (/적으면 계산할/.test($('calcOut').textContent)) $('calcOut').textContent = '계산해서 목표에 채우기를 눌러 주세요.';
     return ok;
   }
   ['q_weight', 'q_bf', 'c_age', 'c_ht'].forEach(function (id) { $(id).addEventListener('input', calcReady); });
+  $('goalSave').addEventListener('click', async function () {
+    if (!cur || cur.role !== 'member' || !sb) return;
+    var g = getGoal(), msg = $('goalSaved'); msg.textContent = '저장하는 중이에요…';
+    var r = await sb.from('profiles').update({ goal: g }).eq('id', cur.acct);
+    if (r.error) { msg.textContent = '저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.'; return; }
+    var me = curMember(); if (me) { me.pgoal = g; me.goal = g; }
+    msg.textContent = '저장했어요. 홈 화면에 바로 반영돼요.'; renderDash();
+  });
   $('calcGo').addEventListener('click', calcGoal);
   function refresh() { if (typeof calcReady === 'function') calcReady(); renderGoalHint(); renderNutri(); renderProgress(); renderDash(); }
 
@@ -1214,7 +1243,7 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   var BRANCH = { mangpo: '망포점', seocheon: '서천점' };
   function emptyDay() { return { ok: false, w: null, cond: null, fat: null, kp: null, pp: null }; }
   function buildMember(p, idx) {
-    return { id: idx, acct: p.id, name: p.name, loginId: p.login_id, branch: p.branch, goal: p.goal && p.goal.kcal ? p.goal : DEFAULT_GOAL, days: [0, 1, 2, 3, 4, 5, 6].map(emptyDay), today: null, recs: {} };
+    return { id: idx, acct: p.id, name: p.name, loginId: p.login_id, branch: p.branch, goal: p.goal && p.goal.kcal ? p.goal : DEFAULT_GOAL, pgoal: p.goal && p.goal.kcal ? p.goal : null, days: [0, 1, 2, 3, 4, 5, 6].map(emptyDay), today: null, recs: {} };
   }
   var members = [];
   var staffFilter = 'all', selected = null;
@@ -1479,7 +1508,7 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 
   /* ---------- 데이터 불러오기 (Supabase) ---------- */
   var PH = {}, FBK = {}, INV = {}, INTAKE = {}, URLC = {}, selDate = todayKey, fbNote = '';
-  var loading = false, reloadAgain = false, reloadTimer = null, chan = null, pollTimer = null, formReady = false;
+  var loading = false, reloadAgain = false, reloadTimer = null, chan = null, pollTimer = null, formReady = false, goalApplied = false;
   var OPEN_ON = null, sb = null, cur = null, cfg = window.ARDOR_CONFIG || {};
   var EMAIL_DOMAIN = cfg.EMAIL_DOMAIN || 'ardorgym.app';
   var emailOf = function (id) { return id + '@' + EMAIL_DOMAIN; };
@@ -1544,6 +1573,7 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
       members = rs[0].data.filter(function (p) { return staff ? p.role === 'member' : p.id === uid; }).map(buildMember);
       rs[1].data.forEach(applyRecord);
       if (cur.role === 'member' && !formReady) { formReady = true; var me = curMember(); if (me && me.goal) setGoalFields(me.goal); renderAll(); }
+      if (cur.role === 'member' && !goalApplied) { goalApplied = true; var me2 = curMember(); if (me2 && me2.pgoal) { setGoalFields(me2.pgoal); refresh(); } }
       await signPaths(rs[2].data.map(function (r) { return r.path; }));
       PH = {};
       rs[2].data.forEach(function (r) { var u = URLC[r.path]; if (u) PH[r.id] = { id: r.id, acct: r.member_id, date: r.record_date, slot: r.slot, path: r.path, img: u.url, at: r.created_at }; });
@@ -1651,13 +1681,13 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   function route() {
     var joinOn = !!joinToken || openMode;
     $('joinView').hidden = !joinOn; $('loginView').hidden = joinOn || !!cur;
-    $('memberView').hidden = joinOn || !cur || cur.role !== 'member'; $('tabbar').hidden = $('memberView').hidden; document.body.classList.toggle('has-tabs', !$('tabbar').hidden); $('staffView').hidden = joinOn || !cur || cur.role !== 'staff'; $('acctBar').hidden = joinOn || !cur;
+    $('memberView').hidden = joinOn || !cur || cur.role !== 'member'; $('tabbar').hidden = $('memberView').hidden; document.body.classList.toggle('has-tabs', !$('tabbar').hidden); $('setBtn').hidden = $('memberView').hidden; $('staffView').hidden = joinOn || !cur || cur.role !== 'staff'; $('acctBar').hidden = joinOn || !cur;
     window.scrollTo(0, 0);
   }
   async function enter(p) {
     cur = { acct: p.id, role: p.role === 'member' ? 'member' : 'staff', admin: p.role === 'admin', name: p.name, branch: p.branch, loginId: p.login_id };
-    members = []; selected = null; formReady = false; PH = {}; FBK = {}; INV = {}; INTAKE = {}; URLC = {};
-    $('acctName').textContent = cur.name + (cur.role === 'member' ? ' 회원' : p.role === 'admin' ? ' 관리자' : ' 직원');
+    members = []; selected = null; formReady = false; goalApplied = false; PH = {}; FBK = {}; INV = {}; INTAKE = {}; URLC = {};
+    $('acctName').textContent = cur.name + (cur.role === 'member' ? '' : p.role === 'admin' ? ' 관리자' : ' 직원');
     await loadFoods();
     if (cur.role === 'member') {
       resetMember(); showTab('home'); $('consent').checked = false; $('subDone').hidden = true; $('subErr').hidden = true;
@@ -1674,7 +1704,7 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     await enter(r.data); return true;
   }
   async function leave(fromEvent) {
-    unsubscribeRealtime(); var was = cur; cur = null; members = []; formReady = false; PH = {}; FBK = {}; INV = {}; INTAKE = {}; URLC = {};
+    unsubscribeRealtime(); var was = cur; cur = null; members = []; formReady = false; goalApplied = false; PH = {}; FBK = {}; INV = {}; INTAKE = {}; URLC = {};
     if (was && !fromEvent && sb) { try { await sb.auth.signOut(); } catch (e) { } }
     $('l_pw').value = ''; $('loginErr').hidden = true; $('fbBanner').hidden = true; $('lb').hidden = true; route();
   }
@@ -1812,7 +1842,6 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     joining = false; $('joinBtn').disabled = false;
   });
   $('joinToLogin').addEventListener('click', function () { joinToken = null; JOIN = null; openMode = false; clearHash(); route(); });
-  $('j_open').addEventListener('click', function () { var t = tokenFrom($('j_code').value); if (t) openJoin(t); else $('j_code').focus(); });
   window.addEventListener('hashchange', function () { if (location.hash === '#join') { openSelf(); return; } var t = tokenFrom(location.hash); if (t) openJoin(t); });
 
   function keyIdx(k) { for (var i = 0; i < 7; i++) if (days7[i].k === k) return i; return -1; }
@@ -1922,7 +1951,7 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   if (!sb) { $('loginErr').textContent = '앱 설정이 아직 끝나지 않았어요. 관리자에게 알려 주세요.'; $('loginErr').hidden = false; if (joinToken || openMode) renderJoin(); }
   else {
     sb.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT' && cur) leave(true); });
-    sb.rpc('open_signup_on').then(function (r) { OPEN_ON = r.error ? true : r.data !== false; if (OPEN_ON === false) { $('j_self').hidden = true; $('selfHint').textContent = '지금은 초대 링크로만 가입할 수 있어요. 직원에게 받은 링크를 아래에 붙여넣어 주세요.'; $('selfHint').parentNode.querySelector('details.more').open = true; } if (openMode) renderJoin(); }, function () { });
+    sb.rpc('open_signup_on').then(function (r) { OPEN_ON = r.error ? true : r.data !== false; if (OPEN_ON === false) { $('j_self').hidden = true; $('selfHint').textContent = '지금은 초대 링크로만 가입할 수 있어요. 직원에게 받은 링크를 눌러 주세요.'; } if (openMode) renderJoin(); }, function () { });
     if (joinToken) openJoin(joinToken); else if (openMode) renderJoin();
     else sb.auth.getSession().then(function (r) { if (r.data && r.data.session) return startSession(r.data.session); }).catch(function () { });
   }
