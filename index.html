@@ -473,6 +473,7 @@ body.pre-auth { padding-block: 0 40px; }
 .row:hover { box-shadow: 0 0 0 1.5px var(--accent), var(--shadow); }
 .stat b { font: 700 28px/1.15 var(--display); }
 .who b { font-family: var(--display); font-size: 17px; }
+.credit{font-size:12px;line-height:1.6;color:var(--ink-2);margin:10px 2px 0}
 </style>
 </head>
 <body>
@@ -682,6 +683,8 @@ body.pre-auth { padding-block: 0 40px; }
     <p class="hint" id="goalHint"></p>
     <button type="button" class="btn primary" id="goalSave" style="width:100%;margin-top:6px">목표 저장</button>
     <p class="hint" id="goalSaved" aria-live="polite"></p>
+    <h3 class="sub" style="font-size:15px;font-weight:700;margin:26px 0 4px">자료 출처</h3>
+    <p class="credit" style="margin-top:0">음식 영양성분 중 공공 데이터는 식품의약품안전처와 농촌진흥청이 공공데이터포털에 공개한 자료(저작자표시)를 이 앱에서 100g 기준으로 환산해 보여 드립니다. 실제 수치는 제품과 조리법에 따라 다를 수 있어요.</p>
   </section>
 </div>
 </main>
@@ -916,19 +919,24 @@ body.pre-auth { padding-block: 0 40px; }
     var u = f.u[0], k = Math.round(f.k * u[1] / 100);
     return '<li><button type="button" data-act="pkpick" data-fid="' + f.id + '"><span><b>' + esc(f.n) + '</b> <small>' + esc(f.cat) + '</small></span><span class="fr-r num">1' + esc(u[0]) + ' ' + u[1] + 'g · ' + k + 'kcal <span class="pill ' + (f.src === '아르더짐' ? 'good' : 'mute') + '">' + f.src + '</span></span></button></li>';
   }
+  var CREDIT = '공공 음식 데이터 출처: 식품의약품안전처, 농촌진흥청 (공공데이터포털, 저작자표시). 이 앱에서 100g 기준으로 환산해 보여 드려요.';
   function resultsHTML() {
     var q = PK.q.trim().toLowerCase(), list, title;
     if (!q) {
       var rec = recentFids();
       if (rec.length) { list = rec.map(function (id) { return FOOD[id]; }); title = '최근 먹은 음식'; }
-      else { list = FOODS.filter(function (f) { return f.src === '아르더짐'; }); title = '자주 먹는 음식 (아르더짐 검수)'; }
+      else {
+        list = FOODS.filter(function (f) { return f.src === '아르더짐'; }); title = '자주 먹는 음식 (아르더짐 검수)';
+        if (!list.length) return '<p class="hint">음식 이름을 검색해 보세요. 예: 닭가슴살, 쌀밥, 김치찌개</p><p class="credit">' + CREDIT + '</p>';
+      }
     } else {
       list = FOODS.filter(function (f) { return f.n.toLowerCase().indexOf(q) >= 0 || f.cat.indexOf(q) >= 0; }).sort(function (a, b) { return (a.src === b.src ? 0 : a.src === '아르더짐' ? -1 : 1) || (a.n < b.n ? -1 : 1); });
       if (!list.length) return '<p class="hint">"' + esc(PK.q.trim()) + '" 음식이 아직 DB에 없어요. 트레이너에게 추가를 요청해 주세요.</p>';
       title = '검색 결과 ' + list.length + '개' + (list.length > 60 ? ' (위 60개만 보여요. 더 자세히 검색해 보세요)' : '');
       list = list.slice(0, 60);
     }
-    return '<p class="note-s">' + title + '</p><ul class="fres">' + list.map(foodRow).join('') + '</ul>';
+    return '<p class="note-s">' + title + '</p><ul class="fres">' + list.map(foodRow).join('') + '</ul>' +
+      (list.some(function (f) { return f.src !== '아르더짐'; }) ? '<p class="credit">' + CREDIT + '</p>' : '');
   }
   function pkCalc() { return calcItem(PK.fid, PK.qty, PK.unit); }
   function prevHTML() { var c = pkCalc(); return '<b>' + n0(c.kcal) + '</b> kcal · 탄 ' + n1(c.carb) + 'g · 단 ' + n1(c.prot) + 'g · 지 ' + n1(c.fat) + 'g <small>(' + n1(c.g) + 'g)</small>'; }
