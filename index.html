@@ -1324,12 +1324,15 @@ body.pre-auth { padding-block: 0 40px; }
     else if (act === 'rmit') { m.items.splice(+b.closest('.it').getAttribute('data-ii'), 1); renderMeals(); refresh(); }
     else if (act === 'rmph') { var p = m.photos.splice(+b.getAttribute('data-pi'), 1)[0]; if (p && p.saved) removedPhotos.push(p.id); renderMeals(); }
   });
+  /* 한글 입력기(IME)는 마지막 글자를 확정할 때 input 이벤트가 늦거나 빠질 수 있어서, 입력칸의 실제 값을 여러 시점에 다시 읽어 검색한다 */
+  function pkSync() { var el = $('pkq'); if (el && PK.q !== el.value) { PK.q = el.value; $('pkRes').innerHTML = resultsHTML(); } }
+  ['compositionend', 'keyup', 'blur', 'search'].forEach(function (ev) { mv.addEventListener(ev, function (e) { if (e.target && e.target.id === 'pkq') { pkSync(); setTimeout(pkSync, 60); } }, true); });
   mv.addEventListener('input', function (e) {
     var t = e.target, f = t.getAttribute('data-f');
     if (f === 'n' || f === 'kg' || f === 's' || f === 'r') { workouts[+t.closest('.wk-row').getAttribute('data-i')][f] = t.value; return; }
     if (f === 'note') { meals[+t.closest('.meal').getAttribute('data-i')].note = t.value; return; }
     if (f === 'qty') { updItem(+t.closest('.meal').getAttribute('data-i'), +t.closest('.it').getAttribute('data-ii'), t.value, null); return; }
-    if (t.id === 'pkq') { PK.q = t.value; $('pkRes').innerHTML = resultsHTML(); return; }
+    if (t.id === 'pkq') { pkSync(); setTimeout(pkSync, 80); setTimeout(pkSync, 300); return; }
     if (t.id === 'pkQty') { PK.qty = t.value; $('pkPrev').innerHTML = prevHTML(); return; }
     if (t.id && /^(g_|q_)/.test(t.id)) refresh();
   });
