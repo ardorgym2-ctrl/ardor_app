@@ -474,6 +474,8 @@ body.pre-auth { padding-block: 0 40px; }
 .stat b { font: 700 28px/1.15 var(--display); }
 .who b { font-family: var(--display); font-size: 17px; }
 .credit{font-size:12px;line-height:1.6;color:var(--ink-2);margin:10px 2px 0}
+.warn-t { color: var(--bad); }
+.qrow.q3 .f { min-width: 72px; }
 </style>
 </head>
 <body>
@@ -824,7 +826,7 @@ body.pre-auth { padding-block: 0 40px; }
   var todayKey = days7[6].k;
   var S, workouts, meals;
   var blankMeals = function () { return SLOTS.map(function (s) { return { slot: s, items: [], photos: [], note: '' }; }); };
-  var newPK = function () { return { i: null, q: '', fid: null, qty: '1', unit: '' }; };
+  var newPK = function () { return { i: null, q: '', fid: null, qty: '1', unit: '', custom: false, cu: null, delAsk: false, saving: false }; };
   var PK = newPK(), removedPhotos = [];
   var setField = function (id, v) { $(id).value = v == null ? '' : v; };
   var HIST = [], dashRange = 30;
@@ -928,7 +930,7 @@ body.pre-auth { padding-block: 0 40px; }
     var n = f.n.toLowerCase(), seg = n.split(',')[0].trim(), head = n.split(/[\s,_()]+/)[0], al = n.match(/\(([^)]*)\)/g) || [], r, k;
     if (seg === q || seg.replace(/\(.*\)/, '') === q) r = 0;
     else { r = n === q || head === q ? 1 : n.indexOf(q) === 0 ? 2 : n.indexOf(q) > 0 || nameMatch(f, q) ? 3 : 4; for (k = 0; k < al.length; k++) if (al[k].slice(1, -1) === q) r = 0; }
-    return (f.src === '아르더짐' ? 0 : 10) + r;
+    return (f.src === '아르더짐' || f.src === '내 음식' ? 0 : 10) + r;
   }
   var CREDIT = '공공 음식 데이터 출처: 식품의약품안전처, 농촌진흥청 (공공데이터포털, 저작자표시). 이 앱에서 100g 기준으로 환산해 보여 드려요.';
   function resultsHTML() {
@@ -937,30 +939,104 @@ body.pre-auth { padding-block: 0 40px; }
       var rec = recentFids();
       if (rec.length) { list = rec.map(function (id) { return FOOD[id]; }); title = '최근 먹은 음식'; }
       else {
-        list = FOODS.filter(function (f) { return f.src === '아르더짐'; }); title = '자주 먹는 음식 (아르더짐 검수)';
+        list = FOODS.filter(function (f) { return f.src === '아르더짐' || f.src === '내 음식'; }); title = '내가 등록한 음식 · 아르더짐 검수 음식';
         if (!list.length) return '<p class="hint">음식 이름을 검색해 보세요. 예: 닭가슴살, 쌀밥, 김치찌개</p><p class="credit">' + CREDIT + '</p>';
       }
     } else {
       list = FOODS.filter(function (f) { return nameMatch(f, q) || f.cat.indexOf(q) >= 0; }).sort(function (a, b) { return foodRank(a, q) - foodRank(b, q) || a.n.length - b.n.length || (a.n < b.n ? -1 : 1); });
-      if (!list.length) return '<p class="hint">"' + esc(PK.q.trim()) + '" 음식이 아직 DB에 없어요. 트레이너에게 추가를 요청해 주세요.</p>';
+      if (!list.length) return '<p class="hint">"' + esc(PK.q.trim()) + '" 음식이 아직 DB에 없어요. 아래 "직접 추가하기"로 영양성분표를 보고 등록할 수 있어요.</p>';
       title = '검색 결과 ' + list.length + '개' + (list.length > 60 ? ' (위 60개만 보여요. 더 자세히 검색해 보세요)' : '');
       list = list.slice(0, 60);
     }
     return '<p class="note-s">' + title + '</p><ul class="fres">' + list.map(foodRow).join('') + '</ul>' +
-      (list.some(function (f) { return f.src !== '아르더짐'; }) ? '<p class="credit">' + CREDIT + '</p>' : '');
+      (list.some(function (f) { return f.src === '공공'; }) ? '<p class="credit">' + CREDIT + '</p>' : '');
   }
   function pkCalc() { return calcItem(PK.fid, PK.qty, PK.unit); }
   function prevHTML() { var c = pkCalc(); return '<b>' + n0(c.kcal) + '</b> kcal · 탄 ' + n1(c.carb) + 'g · 단 ' + n1(c.prot) + 'g · 지 ' + n1(c.fat) + 'g <small>(' + n1(c.g) + 'g)</small>'; }
+
+  /* ---------- 내 음식 직접 추가 (본인과 직원만 보임) ---------- */
+  var CU_KEYS = { cu_n: 'n', cu_b: 'b', cu_k: 'k', cu_c: 'c', cu_p: 'p', cu_f: 'f' };
+  function cuNum(v) { var x = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(x) ? x : NaN; }
+  function cuCalc() {
+    var u = PK.cu || {}, b = cuNum(u.b), k = cuNum(u.k), c = cuNum(u.c), p = cuNum(u.p), f = cuNum(u.f);
+    if (!(b > 0) || [k, c, p, f].some(function (x) { return !isFinite(x); })) return null;
+    var s = 100 / b;
+    return { b: b, k: Math.round(k * s), c: Math.round(c * s * 10) / 10, p: Math.round(p * s * 10) / 10, f: Math.round(f * s * 10) / 10, kIn: k, cIn: c, pIn: p, fIn: f };
+  }
+  function cuProblem(v) {
+    if (v.b > 2000) return '표시된 양이 너무 커요. 영양성분표의 g(또는 ml)를 확인해 주세요.';
+    if (v.kIn < 0 || v.cIn < 0 || v.pIn < 0 || v.fIn < 0) return '0 이상의 숫자로 입력해 주세요.';
+    if (v.k > 900) return '100g으로 환산하면 열량이 900kcal를 넘어요. 표시된 양과 열량을 확인해 주세요.';
+    if (v.c + v.p + v.f > 100) return '100g으로 환산하면 탄수화물·단백질·지방 합이 100g을 넘어요. 표시된 양(g)을 확인해 주세요.';
+    return '';
+  }
+  function cuPrevHTML() {
+    var v = PK.cu ? cuCalc() : null;
+    if (!v) return '<small>숫자를 모두 입력하면 100g 기준 값이 나와요.</small>';
+    var pr = cuProblem(v);
+    if (pr) return '<span class="warn-t">' + esc(pr) + '</span>';
+    var est = 4 * v.c + 4 * v.p + 9 * v.f, off = Math.abs(v.k - est) > Math.max(40, 0.35 * Math.max(v.k, est));
+    return '<b>' + v.k + '</b> kcal · 탄 ' + n1(v.c) + 'g · 단 ' + n1(v.p) + 'g · 지 ' + n1(v.f) + 'g <small>(100g 기준)</small>' +
+      (off ? '<br><small class="warn-t">열량이 탄·단·지로 계산한 값(약 ' + Math.round(est) + 'kcal)과 많이 달라요. 한 번 더 확인해 주세요.</small>' : '');
+  }
+  function customHTML() {
+    var u = PK.cu, inp = function (id, label, val, ph) { return '<div class="f"><label for="' + id + '">' + label + '</label><input id="' + id + '" class="txt" type="number" inputmode="decimal" step="any" min="0" placeholder="' + ph + '" value="' + esc(val) + '"></div>'; };
+    return '<div class="f"><label for="cu_n">음식 이름</label><input id="cu_n" class="txt" maxlength="40" autocomplete="off" placeholder="예: 편의점 단백질바" value="' + esc(u.n) + '"></div>' +
+      '<p class="note-s">제품 뒷면 영양성분표에 적힌 그대로 입력해 주세요. 100g이 아니어도 돼요.</p>' +
+      '<div class="qrow">' + inp('cu_b', '표시된 양 (g 또는 ml)', u.b, '100') + inp('cu_k', '열량 (kcal)', u.k, '0') + '</div>' +
+      '<div class="qrow q3">' + inp('cu_c', '탄수화물 (g)', u.c, '0') + inp('cu_p', '단백질 (g)', u.p, '0') + inp('cu_f', '지방 (g)', u.f, '0') + '</div>' +
+      '<div class="pk-prev num" id="cuPrev">' + cuPrevHTML() + '</div><p class="hint" id="cuMsg" aria-live="polite"></p>' +
+      '<div class="qrow"><button type="button" class="btn primary" data-act="cusave"' + (PK.saving ? ' disabled' : '') + '>저장하고 담기</button><button type="button" class="btn" data-act="cucancel">취소</button></div>' +
+      '<p class="credit" style="margin-top:0">내가 등록한 음식은 나와 담당 트레이너만 볼 수 있어요.</p>';
+  }
+  function cuCode() { var a = new Uint8Array(8); (window.crypto || window.msCrypto).getRandomValues(a); return 'u' + Array.prototype.map.call(a, function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
+  async function cuSave() {
+    var u = PK.cu, msg = $('cuMsg'), v = cuCalc(), name = (u.n || '').trim();
+    var say = function (t) { if (msg) msg.textContent = t; };
+    if (!name) { say('음식 이름을 입력해 주세요.'); return; }
+    if (name.length > 40) { say('이름은 40자까지 쓸 수 있어요.'); return; }
+    if (!v) { say('표시된 양, 열량, 탄수화물, 단백질, 지방을 모두 숫자로 입력해 주세요. 없으면 0을 적어 주세요.'); return; }
+    var pr = cuProblem(v); if (pr) { say('위 안내를 보고 값을 고쳐 주세요.'); return; }
+    if (!sb || !cur) { say('로그인 상태를 확인해 주세요.'); return; }
+    PK.saving = true; say('저장하는 중이에요…');
+    var units = Math.abs(v.b - 100) > 0.5 ? [['1회분', v.b]] : [];
+    var row = { code: cuCode(), name: name, category: '내 음식', source: 'U', owner: cur.acct, kcal: v.k, carb: v.c, prot: v.p, fat: v.f, units: units, active: true };
+    var r = await sb.from('foods').insert(row);
+    PK.saving = false;
+    if (r.error) {
+      var m = String(r.error.message || '');
+      say(/too_many_foods/.test(m) ? '내 음식은 200개까지 등록할 수 있어요. 안 쓰는 음식을 삭제해 주세요.' : /invalid_nutrition/.test(m) ? '영양성분 값이 너무 커요. 표시된 양과 수치를 확인해 주세요.' : '저장하지 못했어요. 잠시 뒤 다시 해 주세요. (오류: ' + m.slice(0, 80) + ')');
+      return;
+    }
+    var food = { id: row.code, n: name, cat: '내 음식', src: '내 음식', k: v.k, c: v.c, p: v.p, f: v.f, u: units };
+    setFoods(FOODS.concat([food]));
+    var idx = PK.i; PK = newPK(); PK.i = idx; PK.fid = food.id; PK.unit = unitsOf(food)[0][0]; PK.qty = PK.unit === 'g' ? '100' : '1';
+    renderMeals();
+    var qq = $('pkQty'); if (qq) { qq.focus(); qq.select(); }
+  }
+  async function cuDelete() {
+    var f = PK.fid ? FOOD[PK.fid] : null; if (!f || f.src !== '내 음식') return;
+    if (!PK.delAsk) { PK.delAsk = true; renderMeals(); return; }
+    var r = await sb.from('foods').update({ active: false }).eq('code', f.id);
+    if (r.error) { PK.delAsk = false; renderMeals(); var pv = $('pkPrev'); if (pv) pv.textContent = '삭제하지 못했어요. 잠시 뒤 다시 해 주세요.'; return; }
+    setFoods(FOODS.filter(function (x) { return x.id !== f.id; }));
+    var idx = PK.i; PK = newPK(); PK.i = idx; renderMeals();
+  }
   function pickerHTML() {
     var f = PK.fid ? FOOD[PK.fid] : null, h = '<div class="picker" id="picker">';
+    if (PK.custom) {
+      h += '<div><b>내 음식 직접 추가</b></div>' + customHTML();
+      return h + '</div>';
+    }
     if (!f) {
-      h += '<div class="f"><label for="pkq">음식 이름</label><input id="pkq" class="txt" type="search" autocomplete="off" placeholder="예: 닭가슴살, 밥, 김치찌개" value="' + esc(PK.q) + '"></div><div id="pkRes">' + resultsHTML() + '</div>';
+      h += '<div class="f"><label for="pkq">음식 이름</label><input id="pkq" class="txt" type="search" autocomplete="off" placeholder="예: 닭가슴살, 밥, 김치찌개" value="' + esc(PK.q) + '"></div><div id="pkRes">' + resultsHTML() + '</div><button type="button" class="btn sm" data-act="pkcustom" style="align-self:flex-start">찾는 음식이 없나요? 직접 추가하기</button>';
     } else {
       h += '<div><b>' + esc(f.n) + '</b> <span class="pill ' + (f.src === '아르더짐' ? 'good' : 'mute') + '">' + f.src + '</span></div>' +
         '<div class="qrow"><div class="f"><label for="pkQty">양</label><input id="pkQty" class="txt" type="number" inputmode="decimal" step="any" min="0" value="' + esc(PK.qty) + '"></div>' +
         '<div class="f"><label for="pkUnit">단위</label><select id="pkUnit" class="sel">' + unitsOf(f).map(function (u) { return '<option value="' + esc(u[0]) + '"' + (u[0] === PK.unit ? ' selected' : '') + '>' + esc(u[0] === 'g' ? 'g' : u[0] + ' (' + u[1] + 'g)') + '</option>'; }).join('') + '</select></div></div>' +
         '<div class="pk-prev num" id="pkPrev">' + prevHTML() + '</div>' +
-        '<div class="qrow"><button type="button" class="btn primary" data-act="pkadd">이 끼니에 추가</button><button type="button" class="btn" data-act="pkback">다른 음식 찾기</button></div>';
+        '<div class="qrow"><button type="button" class="btn primary" data-act="pkadd">이 끼니에 추가</button><button type="button" class="btn" data-act="pkback">다른 음식 찾기</button></div>' +
+        (f.src === '내 음식' ? '<button type="button" class="btn link sm" data-act="pkdel" style="align-self:flex-start">' + (PK.delAsk ? '한 번 더 누르면 내 음식에서 삭제돼요' : '내 음식에서 삭제') + '</button>' : '');
     }
     return h + '<button type="button" class="btn link sm" data-act="pkclose" style="align-self:flex-start">닫기</button></div>';
   }
@@ -1314,8 +1390,12 @@ body.pre-auth { padding-block: 0 40px; }
     var i = +card.getAttribute('data-i'), m = meals[i];
     if (act === 'pkopen') { PK = newPK(); PK.i = i; renderMeals(); var qi = $('pkq'); if (qi) qi.focus(); }
     else if (act === 'pkclose') { PK = newPK(); renderMeals(); }
-    else if (act === 'pkpick') { var f = FOOD[b.getAttribute('data-fid')]; if (!f) return; PK.fid = f.id; PK.unit = unitsOf(f)[0][0]; PK.qty = PK.unit === 'g' ? '100' : '1'; renderMeals(); var qq = $('pkQty'); if (qq) { qq.focus(); qq.select(); } }
-    else if (act === 'pkback') { PK.fid = null; renderMeals(); var q2 = $('pkq'); if (q2) q2.focus(); }
+    else if (act === 'pkpick') { var f = FOOD[b.getAttribute('data-fid')]; if (!f) return; PK.fid = f.id; PK.delAsk = false; PK.unit = unitsOf(f)[0][0]; PK.qty = PK.unit === 'g' ? '100' : '1'; renderMeals(); var qq = $('pkQty'); if (qq) { qq.focus(); qq.select(); } }
+    else if (act === 'pkcustom') { PK.custom = true; PK.cu = { n: PK.q.trim().slice(0, 40), b: '100', k: '', c: '', p: '', f: '' }; renderMeals(); var cf = $(PK.cu.n ? 'cu_k' : 'cu_n'); if (cf) cf.focus(); }
+    else if (act === 'cucancel') { PK.custom = false; PK.cu = null; renderMeals(); var q3 = $('pkq'); if (q3) q3.focus(); }
+    else if (act === 'cusave') { cuSave(); }
+    else if (act === 'pkdel') { cuDelete(); }
+    else if (act === 'pkback') { PK.fid = null; PK.delAsk = false; renderMeals(); var q2 = $('pkq'); if (q2) q2.focus(); }
     else if (act === 'pkadd') {
       var c = pkCalc();
       if (!(c.q > 0)) { $('pkPrev').textContent = '양을 입력해 주세요.'; return; }
@@ -1332,6 +1412,7 @@ body.pre-auth { padding-block: 0 40px; }
     if (f === 'n' || f === 'kg' || f === 's' || f === 'r') { workouts[+t.closest('.wk-row').getAttribute('data-i')][f] = t.value; return; }
     if (f === 'note') { meals[+t.closest('.meal').getAttribute('data-i')].note = t.value; return; }
     if (f === 'qty') { updItem(+t.closest('.meal').getAttribute('data-i'), +t.closest('.it').getAttribute('data-ii'), t.value, null); return; }
+    if (CU_KEYS[t.id] && PK.cu) { PK.cu[CU_KEYS[t.id]] = t.value; var cp = $('cuPrev'); if (cp) cp.innerHTML = cuPrevHTML(); var cm = $('cuMsg'); if (cm) cm.textContent = ''; return; }
     if (t.id === 'pkq') { pkSync(); setTimeout(pkSync, 80); setTimeout(pkSync, 300); return; }
     if (t.id === 'pkQty') { PK.qty = t.value; $('pkPrev').innerHTML = prevHTML(); return; }
     if (t.id && /^(g_|q_)/.test(t.id)) refresh();
@@ -1645,7 +1726,7 @@ body.pre-auth { padding-block: 0 40px; }
     }
     if (!all.length) return;
     setFoods(all.map(function (x) {
-      return { id: x.code, n: x.name, cat: x.category || '기타', src: x.source === 'A' ? '아르더짐' : '공공', k: +x.kcal, c: +x.carb, p: +x.prot, f: +x.fat, u: (x.units || []).map(function (u) { return [String(u[0]), +u[1]]; }) };
+      return { id: x.code, n: x.name, cat: x.category || '기타', src: x.source === 'A' ? '아르더짐' : x.source === 'U' ? '내 음식' : '공공', k: +x.kcal, c: +x.carb, p: +x.prot, f: +x.fat, u: (x.units || []).map(function (u) { return [String(u[0]), +u[1]]; }) };
     }));
   }
   async function signPaths(paths) {
