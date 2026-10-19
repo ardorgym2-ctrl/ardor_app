@@ -684,7 +684,7 @@ body.pre-auth { padding-block: 0 40px; }
     <button type="button" class="btn primary" id="goalSave" style="width:100%;margin-top:6px">목표 저장</button>
     <p class="hint" id="goalSaved" aria-live="polite"></p>
     <h3 class="sub" style="font-size:15px;font-weight:700;margin:26px 0 4px">자료 출처</h3>
-    <p class="credit" style="margin-top:0">음식 영양성분 중 공공 데이터는 식품의약품안전처와 농촌진흥청이 공공데이터포털에 공개한 자료(저작자표시)를 이 앱에서 100g 기준으로 환산해 보여 드립니다. 실제 수치는 제품과 조리법에 따라 다를 수 있어요.</p>
+    <p class="credit" style="margin-top:0">음식 영양성분 중 공공 데이터는 식품의약품안전처와 농촌진흥청이 공공데이터포털에 공개한 자료(저작자표시)를 이 앱에서 100g 기준으로 환산해 보여 드립니다. 실제 수치는 제품과 조리법에 따라 다를 수 있어요. <span id="foodCount"></span></p>
   </section>
 </div>
 </main>
@@ -786,7 +786,7 @@ body.pre-auth { padding-block: 0 40px; }
     ['whey', '프로틴 파우더', '견과·보충제', 'A', 380, 8, 75, 5, [['스쿱', 30]]]
   ].map(function (r) { return { id: r[0], n: r[1], cat: r[2], src: r[3] === 'A' ? '아르더짐' : '공공', k: r[4], c: r[5], p: r[6], f: r[7], u: r[8] }; });
   var FOOD = {};
-  function setFoods(list) { FOODS = list; FOOD = {}; list.forEach(function (f) { FOOD[f.id] = f; }); }
+  function setFoods(list) { FOODS = list; var fc = document.getElementById('foodCount'); if (fc) fc.textContent = '(앱에 들어 있는 음식 ' + list.length.toLocaleString('ko-KR') + '개)'; FOOD = {}; list.forEach(function (f) { FOOD[f.id] = f; }); }
   setFoods(FOODS);  // DB에서 못 불러왔을 때를 대비한 기본 예시 목록 (로그인 후 foods 테이블 값으로 교체)
   function unitsOf(f) { return f.u.concat([['g', 1]]); }
   /* N = N_base x (q x u) / B  (B = 100g). 칼로리는 DB 값을 그대로 쓴다. */
@@ -919,9 +919,20 @@ body.pre-auth { padding-block: 0 40px; }
     var u = f.u[0], k = Math.round(f.k * u[1] / 100);
     return '<li><button type="button" data-act="pkpick" data-fid="' + f.id + '"><span><b>' + esc(f.n) + '</b> <small>' + esc(f.cat) + '</small></span><span class="fr-r num">1' + esc(u[0]) + ' ' + u[1] + 'g · ' + k + 'kcal <span class="pill ' + (f.src === '아르더짐' ? 'good' : 'mute') + '">' + f.src + '</span></span></button></li>';
   }
+  /* 검색어 정리: "삶은계란" -> "삶은 계란", 여러 단어는 모두 들어 있어야 일치. 계란과 달걀은 같은 말로 본다 */
+  function qNorm(q) { return q.replace(/(삶은|구운|찐|볶은|튀긴)(?=[^\s])/g, '$1 ').replace(/\s+/g, ' ').trim(); }
+  function nameHas(n, t) { return n.indexOf(t) >= 0 || (t === '계란' && n.indexOf('달걀') >= 0) || (t === '달걀' && n.indexOf('계란') >= 0); }
+  function nameMatch(f, q) { var n = f.n.toLowerCase(), toks = q.split(' '), k; for (k = 0; k < toks.length; k++) if (!nameHas(n, toks[k])) return false; return true; }
+  /* 검색 순서: 아르더짐 검수 > 식재료 이름이 검색어와 같음("닭가슴살, 생것") > 이름/첫 단어가 같음 > 검색어로 시작 > 포함 > 분류만 일치 */
+  function foodRank(f, q) {
+    var n = f.n.toLowerCase(), seg = n.split(',')[0].trim(), head = n.split(/[\s,_()]+/)[0], al = n.match(/\(([^)]*)\)/g) || [], r, k;
+    if (seg === q || seg.replace(/\(.*\)/, '') === q) r = 0;
+    else { r = n === q || head === q ? 1 : n.indexOf(q) === 0 ? 2 : n.indexOf(q) > 0 || nameMatch(f, q) ? 3 : 4; for (k = 0; k < al.length; k++) if (al[k].slice(1, -1) === q) r = 0; }
+    return (f.src === '아르더짐' ? 0 : 10) + r;
+  }
   var CREDIT = '공공 음식 데이터 출처: 식품의약품안전처, 농촌진흥청 (공공데이터포털, 저작자표시). 이 앱에서 100g 기준으로 환산해 보여 드려요.';
   function resultsHTML() {
-    var q = PK.q.trim().toLowerCase(), list, title;
+    var q = qNorm(PK.q.trim().toLowerCase()), list, title;
     if (!q) {
       var rec = recentFids();
       if (rec.length) { list = rec.map(function (id) { return FOOD[id]; }); title = '최근 먹은 음식'; }
@@ -930,7 +941,7 @@ body.pre-auth { padding-block: 0 40px; }
         if (!list.length) return '<p class="hint">음식 이름을 검색해 보세요. 예: 닭가슴살, 쌀밥, 김치찌개</p><p class="credit">' + CREDIT + '</p>';
       }
     } else {
-      list = FOODS.filter(function (f) { return f.n.toLowerCase().indexOf(q) >= 0 || f.cat.indexOf(q) >= 0; }).sort(function (a, b) { return (a.src === b.src ? 0 : a.src === '아르더짐' ? -1 : 1) || (a.n < b.n ? -1 : 1); });
+      list = FOODS.filter(function (f) { return nameMatch(f, q) || f.cat.indexOf(q) >= 0; }).sort(function (a, b) { return foodRank(a, q) - foodRank(b, q) || a.n.length - b.n.length || (a.n < b.n ? -1 : 1); });
       if (!list.length) return '<p class="hint">"' + esc(PK.q.trim()) + '" 음식이 아직 DB에 없어요. 트레이너에게 추가를 요청해 주세요.</p>';
       title = '검색 결과 ' + list.length + '개' + (list.length > 60 ? ' (위 60개만 보여요. 더 자세히 검색해 보세요)' : '');
       list = list.slice(0, 60);
