@@ -225,6 +225,11 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .rate { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
 .rate button { height: 44px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font: 600 20px var(--display); cursor: pointer; }
 .rate button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.rate.faces button { height: auto; padding: 8px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; font: 500 11px var(--body, inherit); line-height: 1.2; }
+.rate.faces svg { width: 30px; height: 30px; display: block; }
+.fcap { font-size: 12px; color: var(--ink-2); min-height: 16px; }
+.face-s { display: inline-flex; align-items: center; gap: 6px; }
+.face-s svg { width: 22px; height: 22px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-size: 14px; font-weight: 500; cursor: pointer; }
 .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 700; }
@@ -372,6 +377,9 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .fres .fr-r { text-align: right; font-size: 12px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .qrow { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
 .qrow .f { flex: 1; min-width: 110px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line, #ccc); background: transparent; color: inherit; cursor: pointer; }
+.chip.on { background: var(--accent, #222); color: #fff; border-color: transparent; }
 .pk-prev { font-size: 14px; color: var(--ink-2); }
 .pk-prev b { font: 700 24px var(--display); color: var(--ink); }
 .photos { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -623,7 +631,7 @@ body.pre-auth { padding-block: 0 40px; }
     <div class="sec-h"><h2 id="h-cond">오늘 몸 상태</h2><p>1은 낮음, 5는 높음이에요.</p></div>
     <div class="q"><div class="q-h"><span>컨디션</span><small>1 나쁨 · 5 아주 좋음</small></div><div class="rate" data-k="cond"></div></div>
     <div class="q"><div class="q-h"><span>피로도</span><small>1 개운함 · 5 많이 피곤함</small></div><div class="rate" data-k="fatigue"></div></div>
-    <div class="q"><div class="q-h"><span>스트레스</span><small>1 편안함 · 5 매우 높음</small></div><div class="rate" data-k="stress"></div></div>
+    <div class="q"><div class="q-h"><span>스트레스</span><small>지금 기분에 가까운 얼굴</small></div><div class="rate" data-k="stress"></div></div>
     <div class="q"><div class="q-h"><span>아픈 곳이 있나요?</span><small>여러 개 선택할 수 있어요</small></div><div class="chips" id="pain"></div></div>
     <div class="q" id="painIWrap" hidden><div class="q-h"><span>아픈 정도</span></div><div class="opts" id="painI"></div></div>
   </section>
@@ -825,7 +833,7 @@ body.pre-auth { padding-block: 0 40px; }
   /* ---------- 회원 화면 상태 ---------- */
   var todayKey = days7[6].k;
   var S, workouts, meals;
-  var blankMeals = function () { return SLOTS.map(function (s) { return { slot: s, items: [], photos: [], note: '' }; }); };
+  var blankMeals = function () { return SLOTS.map(function (s) { return { slot: s, items: [], photos: [], note: '', full: null }; }); };
   var newPK = function () { return { i: null, q: '', fid: null, qty: '1', unit: '', custom: false, cu: null, delAsk: false, saving: false }; };
   var PK = newPK(), removedPhotos = [];
   var setField = function (id, v) { $(id).value = v == null ? '' : v; };
@@ -860,9 +868,25 @@ body.pre-auth { padding-block: 0 40px; }
     $('trained').innerHTML = TR.map(function (o) { return '<button type="button" class="opt" data-v="' + o[0] + '" aria-pressed="' + (S.trained === o[0]) + '">' + o[1] + '</button>'; }).join('');
     $('wk').hidden = $('addWk').hidden = S.trained === 'rest';
   }
+  /* 얼굴 표정 (포만감·스트레스) */
+  var MOUTH = { big: 'M7 14 Q12 19.5 17 14', smile: 'M8 15 Q12 18 16 15', flat: 'M8 16 H16', low: 'M8 17.5 Q12 14.5 16 17.5', sad: 'M7 18.5 Q12 12.5 17 18.5' };
+  var FULL_FACES = [['sad', '많이 배고팠어요', '많이 배고픔'], ['flat', '조금 아쉬웠어요', '조금 아쉬움'], ['big', '딱 좋았어요', '딱 좋음'], ['smile', '배불렀어요', '배부름'], ['sad', '너무 많이 먹었어요', '과식', 1]];
+  var STRESS_FACES = [['big', '편안해요', '편안'], ['smile', '괜찮아요', '괜찮음'], ['flat', '보통이에요', '보통'], ['low', '힘들어요', '힘듦'], ['sad', '매우 힘들어요', '매우 힘듦', 1]];
+  function faceSVG(mouth, squint) {
+    var eyes = squint ? '<path d="M7.5 8.5 L10.5 10 L7.5 11.5 M16.5 8.5 L13.5 10 L16.5 11.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' : '<circle cx="9" cy="10" r="1.3" fill="currentColor"/><circle cx="15" cy="10" r="1.3" fill="currentColor"/>';
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/>' + eyes + '<path d="' + MOUTH[mouth] + '" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  }
+  function facesHTML(set, cur, what) {
+    return set.map(function (f, i) { var v = i + 1; return '<button type="button" data-v="' + v + '" aria-pressed="' + (cur === v) + '" aria-label="' + esc(what + ': ' + f[1]) + '">' + faceSVG(f[0], f[3]) + '<span>' + f[2] + '</span></button>'; }).join('');
+  }
+  function faceInline(set, v) {
+    if (v == null || !set[v - 1]) return '<span class="mute">–</span>';
+    var f = set[v - 1]; return '<span class="face-s">' + faceSVG(f[0], f[3]) + '<span>' + f[2] + '</span></span>';
+  }
   function renderRates() {
     document.querySelectorAll('.rate').forEach(function (el) {
       var k = el.getAttribute('data-k');
+      if (k === 'stress') { el.classList.add('faces'); el.innerHTML = facesHTML(STRESS_FACES, S.stress, '스트레스'); return; }
       el.innerHTML = [1, 2, 3, 4, 5].map(function (v) { return '<button type="button" data-v="' + v + '" aria-pressed="' + (S[k] === v) + '" aria-label="' + v + '점">' + v + '</button>'; }).join('');
     });
   }
@@ -951,6 +975,10 @@ body.pre-auth { padding-block: 0 40px; }
     return '<p class="note-s">' + title + '</p><ul class="fres">' + list.map(foodRow).join('') + '</ul>' +
       (list.some(function (f) { return f.src === '공공'; }) ? '<p class="credit">' + CREDIT + '</p>' : '');
   }
+  function chipsHTML() {
+    var vals = PK.unit === 'g' ? ['50', '100', '150', '200', '300'] : ['0.5', '1', '1.5', '2', '3'];
+    return vals.map(function (v) { return '<button type="button" class="chip' + (String(PK.qty) === v ? ' on' : '') + '" data-act="pkchip" data-v="' + v + '">' + v + (PK.unit === 'g' ? 'g' : '') + '</button>'; }).join('');
+  }
   function pkCalc() { return calcItem(PK.fid, PK.qty, PK.unit); }
   function prevHTML() { var c = pkCalc(); return '<b>' + n0(c.kcal) + '</b> kcal · 탄 ' + n1(c.carb) + 'g · 단 ' + n1(c.prot) + 'g · 지 ' + n1(c.fat) + 'g <small>(' + n1(c.g) + 'g)</small>'; }
 
@@ -1034,6 +1062,7 @@ body.pre-auth { padding-block: 0 40px; }
       h += '<div><b>' + esc(f.n) + '</b> <span class="pill ' + (f.src === '아르더짐' ? 'good' : 'mute') + '">' + f.src + '</span></div>' +
         '<div class="qrow"><div class="f"><label for="pkQty">양</label><input id="pkQty" class="txt" type="number" inputmode="decimal" step="any" min="0" value="' + esc(PK.qty) + '"></div>' +
         '<div class="f"><label for="pkUnit">단위</label><select id="pkUnit" class="sel">' + unitsOf(f).map(function (u) { return '<option value="' + esc(u[0]) + '"' + (u[0] === PK.unit ? ' selected' : '') + '>' + esc(u[0] === 'g' ? 'g' : u[0] + ' (' + u[1] + 'g)') + '</option>'; }).join('') + '</select></div></div>' +
+        '<div class="chips" id="pkChips">' + chipsHTML() + '</div>' +
         '<div class="pk-prev num" id="pkPrev">' + prevHTML() + '</div>' +
         '<div class="qrow"><button type="button" class="btn primary" data-act="pkadd">이 끼니에 추가</button><button type="button" class="btn" data-act="pkback">다른 음식 찾기</button></div>' +
         (f.src === '내 음식' ? '<button type="button" class="btn link sm" data-act="pkdel" style="align-self:flex-start">' + (PK.delAsk ? '한 번 더 누르면 내 음식에서 삭제돼요' : '내 음식에서 삭제') + '</button>' : '');
@@ -1060,6 +1089,7 @@ body.pre-auth { padding-block: 0 40px; }
       (m.photos.length ? '<div class="photos">' + m.photos.map(function (p, pi) { return '<span class="ph"><img src="' + esc(p.img) + '" alt="' + m.slot + ' 사진 ' + (pi + 1) + '"><button type="button" class="x2" data-act="rmph" data-pi="' + pi + '" aria-label="사진 삭제">×</button></span>'; }).join('') + '</div>' : '') +
       (m.photos.length < 4 ? '<label class="btn sm" style="align-self:flex-start">사진 추가<input class="sr" type="file" accept="image/*" multiple data-f="file"></label>' : '') +
       '<span class="note-s">담당 트레이너가 보고 피드백을 남겨요. 다른 회원에게는 보이지 않아요.</span></div>';
+    h += '<div class="f"><span class="lab" id="fl' + i + '">식사 후 포만감 (선택)</span><div class="rate faces" data-mk="full" role="group" aria-labelledby="fl' + i + '">' + facesHTML(FULL_FACES, m.full, '포만감') + '</div></div>';
     h += '<div class="f"><label for="note' + i + '">메모 (선택)</label><input id="note' + i + '" class="txt" data-f="note" placeholder="예: 외식이라 양을 대충 잡았어요" value="' + esc(m.note) + '"></div>';
     return h + fbHTML(m.slot) + '</article>';
   }
@@ -1372,6 +1402,7 @@ body.pre-auth { padding-block: 0 40px; }
   mv.addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
     var par = b.parentElement, v = b.getAttribute('data-v');
+    if (par.getAttribute('data-mk') === 'full') { var fm = meals[+b.closest('.meal').getAttribute('data-i')]; fm.full = fm.full === +v ? null : +v; par.innerHTML = facesHTML(FULL_FACES, fm.full, '포만감'); return; }
     if (par.id === 'trained') { S.trained = v; renderTrained(); refresh(); return; }
     if (par.classList.contains('rate')) { var k = par.getAttribute('data-k'); S[k] = S[k] === +v ? null : +v; renderRates(); refresh(); return; }
     if (par.id === 'pain') {
@@ -1390,6 +1421,7 @@ body.pre-auth { padding-block: 0 40px; }
     var i = +card.getAttribute('data-i'), m = meals[i];
     if (act === 'pkopen') { PK = newPK(); PK.i = i; renderMeals(); var qi = $('pkq'); if (qi) qi.focus(); }
     else if (act === 'pkclose') { PK = newPK(); renderMeals(); }
+    else if (act === 'pkchip') { PK.qty = b.getAttribute('data-v'); var q2 = $('pkQty'); if (q2) q2.value = PK.qty; $('pkPrev').innerHTML = prevHTML(); $('pkChips').innerHTML = chipsHTML(); }
     else if (act === 'pkpick') { var f = FOOD[b.getAttribute('data-fid')]; if (!f) return; PK.fid = f.id; PK.delAsk = false; PK.unit = unitsOf(f)[0][0]; PK.qty = PK.unit === 'g' ? '100' : '1'; renderMeals(); var qq = $('pkQty'); if (qq) { qq.focus(); qq.select(); } }
     else if (act === 'pkcustom') { PK.custom = true; PK.cu = { n: PK.q.trim().slice(0, 40), b: '100', k: '', c: '', p: '', f: '' }; renderMeals(); var cf = $(PK.cu.n ? 'cu_k' : 'cu_n'); if (cf) cf.focus(); }
     else if (act === 'cucancel') { PK.custom = false; PK.cu = null; renderMeals(); var q3 = $('pkq'); if (q3) q3.focus(); }
@@ -1414,7 +1446,7 @@ body.pre-auth { padding-block: 0 40px; }
     if (f === 'qty') { updItem(+t.closest('.meal').getAttribute('data-i'), +t.closest('.it').getAttribute('data-ii'), t.value, null); return; }
     if (CU_KEYS[t.id] && PK.cu) { PK.cu[CU_KEYS[t.id]] = t.value; var cp = $('cuPrev'); if (cp) cp.innerHTML = cuPrevHTML(); var cm = $('cuMsg'); if (cm) cm.textContent = ''; return; }
     if (t.id === 'pkq') { pkSync(); setTimeout(pkSync, 80); setTimeout(pkSync, 300); return; }
-    if (t.id === 'pkQty') { PK.qty = t.value; $('pkPrev').innerHTML = prevHTML(); return; }
+    if (t.id === 'pkQty') { PK.qty = t.value; $('pkPrev').innerHTML = prevHTML(); $('pkChips').innerHTML = chipsHTML(); return; }
     if (t.id && /^(g_|q_)/.test(t.id)) refresh();
   });
   mv.addEventListener('change', function (e) {
@@ -1423,7 +1455,7 @@ body.pre-auth { padding-block: 0 40px; }
     if (t.id === 'pkUnit') {
       var old = PK.unit; PK.unit = t.value;
       if (PK.unit === 'g' && !(+PK.qty >= 10)) PK.qty = '100'; else if (old === 'g' && +PK.qty >= 10) PK.qty = '1';
-      $('pkQty').value = PK.qty; $('pkPrev').innerHTML = prevHTML(); return;
+      $('pkQty').value = PK.qty; $('pkPrev').innerHTML = prevHTML(); $('pkChips').innerHTML = chipsHTML(); return;
     }
     if (f === 'file' && t.files && t.files.length) {
       var m = meals[+t.closest('.meal').getAttribute('data-i')], room = 4 - m.photos.length, fl = Array.prototype.slice.call(t.files, 0, Math.max(0, room)), left = fl.length;
@@ -1589,7 +1621,7 @@ body.pre-auth { padding-block: 0 40px; }
         '<div class="blk"><h3>몸 상태</h3>' +
         '<div class="kv"><span>컨디션</span>' + dots(r.cond, 'cond') + '</div>' +
         '<div class="kv"><span>피로도</span>' + dots(r.fatigue, 'fat') + '</div>' +
-        '<div class="kv"><span>스트레스</span>' + dots(r.stress, 'fat') + '</div>' +
+        '<div class="kv"><span>스트레스</span>' + faceInline(STRESS_FACES, r.stress) + '</div>' +
         '<div class="kv"><span>통증</span><b>' + (pn ? esc(r.pain.join(', ')) + (r.painI ? ' (' + r.painI + ')' : '') : (r.pain.length ? '없음' : '–')) + '</b></div></div>' +
         '<div class="blk"><h3>오늘 식단 요약 · ' + r.meals.length + '끼</h3>' +
         (r.meals.length ?
@@ -1625,7 +1657,7 @@ body.pre-auth { padding-block: 0 40px; }
   function mealsForSave() {
     return meals.filter(function (m) { return liveItems(m).length; }).map(function (m) {
       var its = liveItems(m).map(function (it) { return { fid: it.fid || null, name: it.name, q: it.q == null ? null : it.q, unit: it.unit || '', g: it.g == null ? null : it.g, kcal: it.kcal, carb: it.carb, prot: it.prot, fat: it.fat }; }), t = sumItems(its);
-      return { slot: m.slot, note: m.note || '', items: its, kcal: t.kcal, carb: t.carb, prot: t.prot, fat: t.fat };
+      return { slot: m.slot, note: m.note || '', full: m.full >= 1 && m.full <= 5 ? m.full : null, items: its, kcal: t.kcal, carb: t.carb, prot: t.prot, fat: t.fat };
     });
   }
   function dataUrlToBlob(u) {
@@ -1862,6 +1894,7 @@ body.pre-auth { padding-block: 0 40px; }
       return '<div class="blk"><h3>' + esc(ml.slot) + ' · ' + n0(ml.kcal) + 'kcal</h3>' +
         '<div class="msum">탄 ' + n1(ml.carb) + 'g · 단 ' + n1(ml.prot) + 'g · 지 ' + n1(ml.fat) + 'g</div>' + ratioBar(ml) +
         '<ul class="items">' + ml.items.map(function (it) { return '<li><span>' + esc(it.name) + '</span><span class="num">' + (it.q ? esc(n1(it.q)) + esc(it.unit) + ' · ' : '') + n0(it.kcal) + 'kcal</span></li>'; }).join('') + '</ul>' +
+        (ml.full ? '<div class="kv"><span>식사 후 포만감</span>' + faceInline(FULL_FACES, ml.full) + '</div>' : '') +
         (ml.note ? '<p class="note-s">회원 메모: ' + esc(ml.note) + '</p>' : '') +
         (ph.length ? '<div class="photos">' + ph.map(function (p) { return '<span class="ph"><button type="button" class="phb" data-big="' + esc(p.id) + '" aria-label="사진 크게 보기"><img src="' + esc(p.img) + '" alt="' + esc(ml.slot) + ' 식사 사진"></button></span>'; }).join('') + '</div>' : '<p class="note-s">첨부한 사진이 없어요.</p>') +
         fbs.map(function (f) { return '<div class="fb"><span><b>' + esc(f.by) + '</b></span><span>' + esc(f.text) + '</span><small>' + esc(timeTxt(f.at)) + '</small></div>'; }).join('') +
@@ -2047,7 +2080,7 @@ body.pre-auth { padding-block: 0 40px; }
     return [{ fid: null, name: '이전 형식으로 저장한 기록', q: null, unit: '', g: null, kcal: +m.kcal || 0, carb: +m.carb || 0, prot: +m.prot || 0, fat: +m.fat || 0 }];
   }
   function recFromDoc(d) {
-    var ms = (d.meals || []).map(function (m) { var its = itemsOf(m), t = sumItems(its); return { slot: m.slot, note: m.note || '', items: its, kcal: t.kcal, carb: t.carb, prot: t.prot, fat: t.fat }; });
+    var ms = (d.meals || []).map(function (m) { var its = itemsOf(m), t = sumItems(its); return { slot: m.slot, note: m.note || '', full: m.full >= 1 && m.full <= 5 ? m.full : null, items: its, kcal: t.kcal, carb: t.carb, prot: t.prot, fat: t.fat }; });
     return { status: d.status, weight: d.weight, sleep: d.sleep, steps: d.steps, water: d.water, muscle: d.muscle, bf: d.bf, trained: d.trained, workouts: d.workouts || [], cond: d.cond, fatigue: d.fatigue, stress: d.stress, pain: d.pain || [], painI: d.painI, meals: ms, tot: d.tot || sumMeals(ms), goal: d.goal && d.goal.kcal ? d.goal : DEFAULT_GOAL };
   }
   function restoreForm(d) {
@@ -2059,7 +2092,7 @@ body.pre-auth { padding-block: 0 40px; }
     if (d.goal && d.goal.kcal) setGoalFields(d.goal);
     (d.meals || []).forEach(function (m) {
       var i = SLOTS.indexOf(m.slot); if (i < 0) return;
-      meals[i].items = itemsOf(m); meals[i].note = m.note || '';
+      meals[i].items = itemsOf(m); meals[i].note = m.note || ''; meals[i].full = m.full >= 1 && m.full <= 5 ? m.full : null;
     });
     mergePhotos();
     renderAll(); renderFbBanner();
