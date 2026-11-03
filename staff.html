@@ -596,7 +596,7 @@ body.pre-auth { padding-block: 0 40px; }
   </section>
 <section class="sec" aria-labelledby="h-sub">
     <div class="sec-h"><h2 id="h-sub">오늘 기록 제출</h2></div>
-    <p class="hint" id="saveState">제출한 기록은 저장돼요. 앱을 닫았다 열어도 남아요.</p>
+    <p class="hint" id="saveState">작성 중인 내용은 이 기기에 임시로 남아요. 제출해야 트레이너에게 전달되고, 식단 사진은 제출해야 저장돼요.</p>
     <label class="consent"><input type="checkbox" id="consent"><span>체중, 통증, 식단 사진 같은 건강 정보를 아르더짐이 코칭 목적으로 수집하고 이용하는 데 동의해요.</span></label>
     <p class="err" id="subErr" hidden>동의에 체크해야 제출할 수 있어요.</p>
     <button class="btn primary" id="submitBtn" type="button">오늘 기록 제출</button>
@@ -1457,7 +1457,10 @@ body.pre-auth { padding-block: 0 40px; }
   /* 한글 입력기(IME)는 마지막 글자를 확정할 때 input 이벤트가 늦거나 빠질 수 있어서, 입력칸의 실제 값을 여러 시점에 다시 읽어 검색한다 */
   function pkSync() { var el = $('pkq'); if (el && PK.q !== el.value) { PK.q = el.value; $('pkRes').innerHTML = resultsHTML(); } }
   ['compositionend', 'keyup', 'blur', 'search'].forEach(function (ev) { mv.addEventListener(ev, function (e) { if (e.target && e.target.id === 'pkq') { pkSync(); setTimeout(pkSync, 60); } }, true); });
+  mv.addEventListener('click', function () { setTimeout(scheduleDraft, 0); });
+  mv.addEventListener('change', function () { scheduleDraft(); });
   mv.addEventListener('input', function (e) {
+    scheduleDraft();
     var t = e.target, f = t.getAttribute('data-f');
     if (f === 'n' || f === 'kg' || f === 's' || f === 'r') { workouts[+t.closest('.wk-row').getAttribute('data-i')][f] = t.value; return; }
     if (f === 'note') { meals[+t.closest('.meal').getAttribute('data-i')].note = t.value; return; }
@@ -1746,12 +1749,46 @@ body.pre-auth { padding-block: 0 40px; }
       sb.from('profiles').update({ goal: g }).eq('id', cur.acct).then(function () { });
       var failed = await savePhotos();
       $('subDoneText').textContent = failed ? base + ' 다만 사진 ' + failed + '장은 저장하지 못했어요. 다시 제출해 주세요.' : base + ' 담당 트레이너가 확인해요.';
-      $('subDone').hidden = false; scheduleReload();
+      $('subDone').hidden = false; clearDraft(); scheduleReload();
     } catch (err) {
       $('subDoneText').textContent = '저장에 실패했어요. 인터넷 연결을 확인하고 다시 제출해 주세요.'; $('subDone').hidden = false;
     }
     saving = false; $('submitBtn').disabled = false;
   });
+
+
+  /* ---------- 작성 중 임시 저장 (이 기기에만 보관, 제출하면 지움) ---------- */
+  var draftTimer = null, DRAFT_FIELDS = ['q_weight', 'q_sleep', 'q_steps', 'q_water', 'q_muscle', 'q_bf'];
+  var draftKey = function () { return cur ? 'ardor_draft_' + cur.acct : null; };
+  function saveDraft() {
+    clearTimeout(draftTimer); draftTimer = null;
+    var k = draftKey(); if (!k || cur.role !== 'member' || !formReady) return;
+    var f = {}; DRAFT_FIELDS.forEach(function (id) { f[id] = $(id).value; });
+    lsSet(k, JSON.stringify({ date: todayKey, at: Date.now(), f: f, S: S, workouts: workouts, meals: meals.map(function (m) { return { items: m.items, note: m.note, full: m.full }; }) }));
+  }
+  function clearDraft() { clearTimeout(draftTimer); draftTimer = null; var k = draftKey(); if (k) { try { localStorage.removeItem(k); } catch (e) { } } }
+  function scheduleDraft() { if (!cur || cur.role !== 'member' || !formReady) return; clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 500); }
+  function applyDraft(serverAt) {
+    var k = draftKey(), raw = k && lsGet(k), d; if (!raw) return false;
+    try { d = JSON.parse(raw); } catch (e) { clearDraft(); return false; }
+    if (!d || d.date !== todayKey || !(d.at > (serverAt ? Date.parse(serverAt) || 0 : 0))) { clearDraft(); return false; }
+    var r5 = function (v) { v = +v; return v >= 1 && v <= 5 ? v : null; }, ds = d.S || {};
+    S.trained = ['pt', 'self', 'rest'].indexOf(ds.trained) >= 0 ? ds.trained : null;
+    S.cond = r5(ds.cond); S.fatigue = r5(ds.fatigue); S.stress = r5(ds.stress); S.painI = ['약', '중', '강'].indexOf(ds.painI) >= 0 ? ds.painI : null;
+    S.pain = (ds.pain || []).filter(function (p) { return PAINS.indexOf(p) >= 0; });
+    workouts = (d.workouts || []).slice(0, 30).map(function (w) { return { n: String(w.n || '').slice(0, 40), kg: w.kg == null ? '' : w.kg, s: w.s == null ? '' : w.s, r: w.r == null ? '' : w.r }; });
+    DRAFT_FIELDS.forEach(function (id) { setField(id, d.f && d.f[id] != null && d.f[id] !== '' ? d.f[id] : ''); });
+    (d.meals || []).forEach(function (m, i) {
+      if (!meals[i] || !m) return;
+      meals[i].items = (m.items || []).filter(function (it) { return it && typeof it.name === 'string'; });
+      meals[i].note = String(m.note || '').slice(0, 200); meals[i].full = r5(m.full);
+    });
+    renderAll();
+    $('subDoneText').textContent = '작성 중이던 내용을 불러왔어요. 아직 제출하지 않았어요.'; $('subDone').hidden = false;
+    return true;
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') saveDraft(); });
+  window.addEventListener('pagehide', saveDraft);
 
   /* ---------- 데이터 불러오기 (Supabase) ---------- */
   var PH = {}, FBK = {}, INV = {}, INTAKE = {}, URLC = {}, selDate = todayKey, fbNote = '';
@@ -1788,7 +1825,7 @@ body.pre-auth { padding-block: 0 40px; }
     }
   }
   function rowToDoc(r) {
-    return { acct: r.member_id, date: r.record_date, status: r.status, weight: r.weight, sleep: r.sleep, steps: r.steps, water: r.water, muscle: r.muscle, bf: r.body_fat, trained: r.trained, workouts: r.workouts || [], cond: r.cond, fatigue: r.fatigue, stress: r.stress, pain: r.pain || [], painI: r.pain_level, goal: r.goal, meals: r.meals || [], tot: r.tot };
+    return { acct: r.member_id, date: r.record_date, at: r.updated_at, status: r.status, weight: r.weight, sleep: r.sleep, steps: r.steps, water: r.water, muscle: r.muscle, bf: r.body_fat, trained: r.trained, workouts: r.workouts || [], cond: r.cond, fatigue: r.fatigue, stress: r.stress, pain: r.pain || [], painI: r.pain_level, goal: r.goal, meals: r.meals || [], tot: r.tot };
   }
   function applyRecord(row) {
     var d = rowToDoc(row), mem = memberByAcct(d.acct), idx = keyIdx(d.date);
@@ -1796,7 +1833,7 @@ body.pre-auth { padding-block: 0 40px; }
     var rec = recFromDoc(d); mem.days[idx] = dayFromRec(rec); mem.recs[d.date] = rec;
     if (idx === 6) {
       mem.today = rec; if (d.goal && d.goal.kcal) mem.goal = d.goal;
-      if (cur && cur.role === 'member' && cur.acct === d.acct && !formReady) { formReady = true; restoreForm(d); }
+      if (cur && cur.role === 'member' && cur.acct === d.acct && !formReady) { formReady = true; restoreForm(d); applyDraft(d.at); }
     }
   }
   async function loadAll() {
@@ -1820,7 +1857,7 @@ body.pre-auth { padding-block: 0 40px; }
       var byId = {}; rs[0].data.forEach(function (p) { byId[p.id] = p; });
       members = rs[0].data.filter(function (p) { return staff ? p.role === 'member' : p.id === uid; }).map(buildMember);
       rs[1].data.forEach(applyRecord);
-      if (cur.role === 'member' && !formReady) { formReady = true; var me = curMember(); if (me && me.goal) setGoalFields(me.goal); renderAll(); }
+      if (cur.role === 'member' && !formReady) { formReady = true; var me = curMember(); if (me && me.goal) setGoalFields(me.goal); renderAll(); applyDraft(null); }
       if (cur.role === 'member' && !goalApplied) { goalApplied = true; var me2 = curMember(); if (me2 && me2.pgoal) { setGoalFields(me2.pgoal); refresh(); } }
       await signPaths(rs[2].data.map(function (r) { return r.path; }));
       PH = {};
@@ -1947,14 +1984,16 @@ body.pre-auth { padding-block: 0 40px; }
     }
     route(); subscribeRealtime(); renderFbBanner(); await loadAll();
   }
-  var wrongSite = null;
+  var wrongSite = null, sessionRetry = false;
   function showWrongSite() {
     var err = $('loginErr'), staff = wrongSite === 'staff';
     err.innerHTML = esc(staff ? '직원 계정이에요. ' : '회원 계정이에요. ') + '<a href="' + esc(siteUrl(staff)) + '">' + esc(staff ? '직원용 페이지로 이동' : '회원용 페이지로 이동') + '</a>'; err.hidden = false;
   }
   async function startSession(session) {
     var r = await sb.from('profiles').select('id,login_id,name,branch,role,goal').eq('id', session.user.id).maybeSingle();
-    if (r.error || !r.data) { await sb.auth.signOut(); return false; }
+    if (r.error) { sessionRetry = true; return false; }   /* 연결 문제로 못 읽은 것: 로그아웃하지 않고 다시 시도 */
+    if (!r.data) { await sb.auth.signOut(); return false; }
+    sessionRetry = false;
     wrongSite = (r.data.role === 'member') === STAFF_SITE ? (STAFF_SITE ? 'member' : 'staff') : null;
     if (wrongSite) { try { await sb.auth.signOut(); } catch (e) { } showWrongSite(); return false; }
     await enter(r.data); return true;
@@ -1977,7 +2016,7 @@ body.pre-auth { padding-block: 0 40px; }
     if (!ok && !wrongSite) { err.textContent = '계정 정보를 찾지 못했어요. 직원에게 문의해 주세요.'; err.hidden = false; }
     btn.disabled = false;
   });
-  $('logoutBtn').addEventListener('click', function () { leave(false); });
+  $('logoutBtn').addEventListener('click', function () { clearDraft(); leave(false); });
 
   /* ---------- 초대 링크와 가입 ---------- */
   var inviteLink = function (t, role) { return location.origin + (role && role !== 'member' ? '/staff' : '/') + '#j-' + t; };
@@ -2220,7 +2259,13 @@ body.pre-auth { padding-block: 0 40px; }
     sb.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT' && cur) leave(true); });
     sb.rpc('open_signup_on').then(function (r) { OPEN_ON = r.error ? true : r.data !== false; if (OPEN_ON === false) { $('j_self').hidden = true; $('selfHint').textContent = '지금은 초대 링크로만 가입할 수 있어요. 직원에게 받은 링크를 눌러 주세요.'; } if (openMode) renderJoin(); }, function () { });
     if (joinToken) openJoin(joinToken); else if (openMode) renderJoin();
-    else sb.auth.getSession().then(function (r) { if (r.data && r.data.session) return startSession(r.data.session); }).catch(function () { });
+    else {
+      var restore = function (n) {
+        sb.auth.getSession().then(function (r) { if (r.data && r.data.session) return startSession(r.data.session).then(function (ok) { if (!ok && sessionRetry) { if (n < 4) setTimeout(function () { restore(n + 1); }, 2500); else { $('loginErr').textContent = '연결이 불안정해요. 잠시 뒤 앱을 다시 열어 주세요.'; $('loginErr').hidden = false; } } }); }).catch(function () { if (n < 4) setTimeout(function () { restore(n + 1); }, 2500); });
+      };
+      restore(0);
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { }
+    }
   }
 })();
 </script>
