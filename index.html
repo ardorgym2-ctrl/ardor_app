@@ -6,14 +6,23 @@
 <title>아르더짐 회원 체크</title>
 <meta name="theme-color" content="#F9F9EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1D1814" media="(prefers-color-scheme: dark)">
-<link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" href="/icons/icon-192.png">
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest" id="mf">
+<link rel="icon" href="/icons/icon-192.png" id="ic">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" id="ai">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="아르더짐">
+<meta name="apple-mobile-web-app-title" content="아르더짐" id="at">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="referrer" content="strict-origin-when-cross-origin">
+<script>
+/* /staff 로 들어오면 직원용 페이지: 이름·아이콘·설치 정보를 직원용으로 바꾼다 */
+(function () {
+  var s = /^\/staff(\/|\.html|$)/.test(location.pathname); window.ARDOR_STAFF_SITE = s; if (!s) return;
+  document.title = '아르더짐 직원';
+  var set = function (id, k, v) { var e = document.getElementById(id); if (e) e[k] = v; };
+  set('mf', 'href', '/manifest-staff.webmanifest'); set('ic', 'href', '/icons/staff-icon-192.png'); set('ai', 'href', '/icons/staff-apple-touch-icon.png'); set('at', 'content', '아르더짐 직원');
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
@@ -1738,6 +1747,7 @@ body.pre-auth { padding-block: 0 40px; }
   /* ---------- 데이터 불러오기 (Supabase) ---------- */
   var PH = {}, FBK = {}, INV = {}, INTAKE = {}, URLC = {}, selDate = todayKey, fbNote = '';
   var loading = false, reloadAgain = false, reloadTimer = null, chan = null, pollTimer = null, formReady = false, goalApplied = false;
+  var STAFF_SITE = !!window.ARDOR_STAFF_SITE;
   var OPEN_ON = null, sb = null, cur = null, cfg = window.ARDOR_CONFIG || {};
   var EMAIL_DOMAIN = cfg.EMAIL_DOMAIN || 'ardorgym.app';
   var emailOf = function (id) { return id + '@' + EMAIL_DOMAIN; };
@@ -1928,9 +1938,16 @@ body.pre-auth { padding-block: 0 40px; }
     }
     route(); subscribeRealtime(); renderFbBanner(); await loadAll();
   }
+  var wrongSite = null;
+  function showWrongSite() {
+    var err = $('loginErr'), staff = wrongSite === 'staff';
+    err.innerHTML = esc(staff ? '직원 계정이에요. ' : '회원 계정이에요. ') + '<a href="' + esc(siteUrl(staff)) + '">' + esc(staff ? '직원용 페이지로 이동' : '회원용 페이지로 이동') + '</a>'; err.hidden = false;
+  }
   async function startSession(session) {
     var r = await sb.from('profiles').select('id,login_id,name,branch,role,goal').eq('id', session.user.id).maybeSingle();
     if (r.error || !r.data) { await sb.auth.signOut(); return false; }
+    wrongSite = (r.data.role === 'member') === STAFF_SITE ? (STAFF_SITE ? 'member' : 'staff') : null;
+    if (wrongSite) { try { await sb.auth.signOut(); } catch (e) { } showWrongSite(); return false; }
     await enter(r.data); return true;
   }
   async function leave(fromEvent) {
@@ -1948,13 +1965,14 @@ body.pre-auth { padding-block: 0 40px; }
     if (r.error || !r.data || !r.data.session) { err.textContent = r.error && r.error.status === 429 ? '시도가 너무 많아요. 잠시 뒤에 다시 해 주세요.' : '아이디나 비밀번호가 맞지 않아요.'; err.hidden = false; btn.disabled = false; return; }
     err.hidden = true;
     var ok = await startSession(r.data.session);
-    if (!ok) { err.textContent = '계정 정보를 찾지 못했어요. 직원에게 문의해 주세요.'; err.hidden = false; }
+    if (!ok && !wrongSite) { err.textContent = '계정 정보를 찾지 못했어요. 직원에게 문의해 주세요.'; err.hidden = false; }
     btn.disabled = false;
   });
   $('logoutBtn').addEventListener('click', function () { leave(false); });
 
   /* ---------- 초대 링크와 가입 ---------- */
-  var inviteLink = function (t) { return location.origin + location.pathname + '#j-' + t; };
+  var inviteLink = function (t, role) { return location.origin + (role && role !== 'member' ? '/staff' : '/') + '#j-' + t; };
+  var siteUrl = function (staff) { return location.origin + (staff ? '/staff' : '/'); };
   function rndToken() {
     var cs = 'abcdefghjkmnpqrstuvwxyz23456789', out = '', i, a = new Uint8Array(10);
     try { crypto.getRandomValues(a); } catch (e) { for (i = 0; i < 10; i++) a[i] = Math.floor(Math.random() * 256); }
@@ -1971,8 +1989,8 @@ body.pre-auth { padding-block: 0 40px; }
     var fail = function () { if (inputEl) { inputEl.focus(); inputEl.select(); } msgEl.textContent = '복사가 안 돼요. 링크를 길게 눌러서 복사해 주세요.'; };
     try { navigator.clipboard.writeText(text).then(function () { msgEl.textContent = '링크를 복사했어요.'; }, fail); } catch (e) { fail(); }
   }
-  function showLink(t, name) {
-    $('invOut').hidden = false; $('invOutName').textContent = name + ' 초대 링크'; $('invLinkInput').value = inviteLink(t);
+  function showLink(t, name, role) {
+    $('invOut').hidden = false; $('invOutName').textContent = name + ' 초대 링크'; $('invLinkInput').value = inviteLink(t, role);
   }
   function renderInvites() {
     var list = Object.keys(INV).map(function (k) { return INV[k]; }).sort(function (a, b) { return a.createdAt < b.createdAt ? 1 : -1; });
@@ -2000,6 +2018,9 @@ body.pre-auth { padding-block: 0 40px; }
     if (JOIN.status === 'error') { info.textContent = '초대 정보를 확인하지 못했어요. 잠시 뒤 링크를 다시 열어 주세요.'; return; }
     if (JOIN.status === 'none') { info.textContent = '없는 초대 링크예요. 직원에게 새 링크를 요청해 주세요.'; return; }
     if (JOIN.status === 'used') { info.textContent = '이미 사용한 초대 링크예요. 로그인하거나 직원에게 새 링크를 요청해 주세요.'; return; }
+    if ((JOIN.role === 'member') === STAFF_SITE) {
+      info.innerHTML = esc(STAFF_SITE ? '회원 초대 링크예요. ' : '직원 초대 링크예요. ') + '<a href="' + esc(siteUrl(!STAFF_SITE) + location.hash) + '">' + esc(STAFF_SITE ? '회원용 페이지에서 가입하기' : '직원용 페이지에서 가입하기') + '</a>'; return;
+    }
     var isMember = JOIN.role === 'member', bn = BRANCH[JOIN.branch] || '';
     $('joinEyebrow').textContent = bn; $('joinTitle').textContent = isMember ? '회원 가입' : '직원 가입';
     info.textContent = JOIN.name + ' 님, 아르더짐 ' + bn + (isMember ? '에 오신 걸 환영해요. 아이디와 비밀번호만 정하면 바로 시작할 수 있어요.' : ' 직원 계정을 만들어요. 아이디와 비밀번호를 정해 주세요.');
@@ -2010,9 +2031,12 @@ body.pre-auth { padding-block: 0 40px; }
     if (!sb) return;
     var r = await sb.rpc('peek_invite', { p_token: t });
     if (joinToken !== t) return;
-    JOIN = r.error || !r.data ? { status: 'error' } : r.data; renderJoin();
+    JOIN = r.error || !r.data ? { status: 'error' } : r.data;
+    if (JOIN.role && (JOIN.status === 'ok' || JOIN.status == null) && (JOIN.role === 'member') === STAFF_SITE) { try { location.replace(siteUrl(!STAFF_SITE) + location.hash); return; } catch (e) { } }
+    renderJoin();
   }
   async function openSelf() {
+    if (STAFF_SITE) return;
     openMode = true; joinToken = null; JOIN = null; $('joinErr').hidden = true; renderJoin(); route();
     if (!sb || OPEN_ON !== null) return;
     var r = await sb.rpc('open_signup_on'); OPEN_ON = r.error ? true : r.data !== false; if (openMode) renderJoin();
@@ -2022,15 +2046,15 @@ body.pre-auth { padding-block: 0 40px; }
     var name = $('inv_name').value.trim(); $('invMsg').textContent = '';
     if (!name) { $('invMsg').textContent = '이름을 입력해 주세요.'; return; }
     if (!sb || !cur) return;
-    var admin = cur.admin, r = await sb.rpc('create_invite', { p_name: name, p_role: admin ? $('inv_role').value : 'member', p_branch: admin ? $('inv_branch').value : null });
+    var admin = cur.admin, role = admin ? $('inv_role').value : 'member', r = await sb.rpc('create_invite', { p_name: name, p_role: role, p_branch: admin ? $('inv_branch').value : null });
     if (r.error || !r.data) { $('invMsg').textContent = '링크를 만들지 못했어요. 잠시 뒤 다시 눌러 주세요.'; return; }
-    $('inv_name').value = ''; showLink(r.data, name); $('invMsg').textContent = '링크를 만들었어요. 복사해서 보내 주세요.'; scheduleReload();
+    $('inv_name').value = ''; showLink(r.data, name, role); $('invMsg').textContent = '링크를 만들었어요. 복사해서 보내 주세요.'; scheduleReload();
   });
   $('invCopy').addEventListener('click', function () { copyLink($('invLinkInput').value, $('invLinkInput'), $('invMsg')); });
   $('invList').addEventListener('click', async function (e) {
     var b = e.target.closest('button'); if (!b) return;
     var t = b.getAttribute('data-t'), v = INV[t]; if (!v) return;
-    if (b.getAttribute('data-act') === 'copy') { showLink(t, v.name); copyLink(inviteLink(t), $('invLinkInput'), $('invMsg')); }
+    if (b.getAttribute('data-act') === 'copy') { showLink(t, v.name, v.role); copyLink(inviteLink(t, v.role), $('invLinkInput'), $('invMsg')); }
     else if (b.getAttribute('data-act') === 'cancel' && sb) {
       var r = await sb.from('invites').delete().eq('token', t);
       if (r.error) $('invMsg').textContent = '취소하지 못했어요.'; else scheduleReload();
@@ -2175,8 +2199,12 @@ body.pre-auth { padding-block: 0 40px; }
   /* ---------- 시작 ---------- */
   resetIntake(); resetMember(); renderAll();
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function () { }); }
+  if (STAFF_SITE) {
+    document.querySelector('#loginView .newhere').hidden = true; document.querySelector('#loginView h1').textContent = '직원 로그인';
+    document.querySelectorAll('.hero span').forEach(function (el) { el.textContent = '직원용'; });
+  }
   var startTok = tokenFrom(location.hash); if (startTok) joinToken = startTok;
-  if (!startTok && location.hash === '#join') openMode = true;
+  if (!startTok && location.hash === '#join' && !STAFF_SITE) openMode = true;
   route();
   if (!sb) { $('loginErr').textContent = '앱 설정이 아직 끝나지 않았어요. 관리자에게 알려 주세요.'; $('loginErr').hidden = false; if (joinToken || openMode) renderJoin(); }
   else {
