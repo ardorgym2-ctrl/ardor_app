@@ -301,6 +301,13 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .stat b small { font-size: 15px; color: var(--ink-2); font-weight: 500; }
 .stat.hot b { color: var(--bad); }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 12px; align-items: center; }
+.applybox { margin: 12px 0; border-color: var(--accent, var(--ink)); }
+.applybox ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.applybox li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.hint.ok { color: var(--ink); font-weight: 600; }
+.asg { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); font-size: 14px; }
+.asg select { height: 36px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); padding: 0 8px; font-size: 14px; }
+.asg-msg { font-size: 13px; color: var(--ink-2); }
 .filters .sort { margin-left: auto; font-size: 12px; color: var(--ink-2); }
 .cols { display: none; font-size: 12px; color: var(--ink-2); padding: 0 14px 6px; }
 .row, .cols { grid-template-columns: minmax(150px, 1.5fr) 92px 84px 100px 96px 112px 112px 84px; gap: 12px; }
@@ -359,6 +366,8 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .inst ol { margin: 8px 0 0; padding-left: 20px; font-size: 14px; }
 .inst ol li { margin: 2px 0; }
 .inst .warn { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-top: 8px; }
+.lopts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 2px 0 12px; }
+.lopts .nrow { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--mut, inherit); }
 .inst .nrow { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 15px; font-weight: 500; }
 .inst .nrow input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
 .inst .nopts { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
@@ -511,6 +520,8 @@ body.pre-auth { padding-block: 0 40px; }
     <form id="loginForm" autocomplete="off">
       <div class="f"><label for="l_id">아이디</label><input id="l_id" class="txt big" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="아이디"></div>
       <div class="f"><label for="l_pw">비밀번호</label><input id="l_pw" class="txt big" type="password" placeholder="비밀번호"></div>
+      <div class="lopts"><label class="nrow"><input type="checkbox" id="l_keep" checked> 로그인 유지</label><label class="nrow"><input type="checkbox" id="l_remid" checked> 아이디 기억하기</label></div>
+      <p class="hint ok" id="loginInfo" role="status" hidden></p>
       <p class="err" id="loginErr" hidden>아이디나 비밀번호가 맞지 않아요.</p>
       <button class="btn primary" type="submit">로그인</button>
     </form>
@@ -719,10 +730,11 @@ body.pre-auth { padding-block: 0 40px; }
 
 <main id="staffView" class="wrap wide" hidden>
   <div id="staffList">
+    <div class="blk applybox" id="applyBox" hidden></div>
     <details class="invite" id="inviteBox">
       <summary>회원 초대 링크 만들기 <span class="pill mute" id="invCount"></span></summary>
       <div class="inv-body">
-        <p class="hint">이름을 넣으면 그 사람 전용 링크가 만들어져요. 링크를 보내면 회원이 아이디와 비밀번호만 정하고 바로 시작해요. 링크는 한 번만 쓸 수 있어요.</p>
+        <p class="hint">이름을 넣으면 그 사람 전용 링크가 만들어져요. 링크를 보내면 회원이 아이디와 비밀번호만 정하고 바로 시작해요. 링크는 한 번만 쓸 수 있어요. 직원이 만든 링크로 가입한 회원은 자동으로 그 직원의 회원이 돼요.</p>
         <div class="inv-row" id="invAdmin" hidden><select id="inv_role" class="sel" aria-label="계정 종류"><option value="member">회원</option><option value="staff">직원</option></select><select id="inv_branch" class="sel" aria-label="지점"><option value="mangpo">망포점</option><option value="seocheon">서천점</option></select></div>
         <div class="inv-row"><input id="inv_name" class="txt" type="text" maxlength="30" placeholder="이름"><button type="button" class="btn primary" id="invBtn">링크 만들기</button></div>
         <div id="invOut" hidden>
@@ -735,6 +747,7 @@ body.pre-auth { padding-block: 0 40px; }
     </details>
     <p class="eyebrow">오늘 회원 현황 · <span id="staffScope"></span></p>
     <div class="stats" id="stats" style="margin-top:8px"></div>
+    <div class="filters" id="scopes" style="margin-bottom:0"></div>
     <div class="filters" id="filters"></div>
     <div class="cols" id="cols"><span>회원</span><span>오늘 기록</span><span>컨디션</span><span>통증</span><span>체중 7일</span><span>칼로리</span><span>단백질</span><span>7일 기록</span></div>
     <div id="rows"></div>
@@ -1493,10 +1506,12 @@ body.pre-auth { padding-block: 0 40px; }
   var BRANCH = { mangpo: '망포점', seocheon: '서천점' };
   function emptyDay() { return { ok: false, w: null, cond: null, fat: null, kp: null, pp: null }; }
   function buildMember(p, idx) {
-    return { id: idx, acct: p.id, name: p.name, loginId: p.login_id, branch: p.branch, goal: p.goal && p.goal.kcal ? p.goal : DEFAULT_GOAL, pgoal: p.goal && p.goal.kcal ? p.goal : null, days: [0, 1, 2, 3, 4, 5, 6].map(emptyDay), today: null, recs: {} };
+    return { id: idx, acct: p.id, name: p.name, loginId: p.login_id, branch: p.branch, trainer: p.trainer_id || null, goal: p.goal && p.goal.kcal ? p.goal : DEFAULT_GOAL, pgoal: p.goal && p.goal.kcal ? p.goal : null, days: [0, 1, 2, 3, 4, 5, 6].map(emptyDay), today: null, recs: {} };
   }
   var members = [];
-  var staffFilter = 'all', selected = null;
+  var staffFilter = 'all', selected = null, scopeSel = null, PROF = {};
+  var SCOPES = [['mine', '내 회원', function (m) { return cur && m.trainer === cur.acct; }], ['all', '지점 전체', function () { return true; }], ['none', '담당 미지정', function (m) { return !m.trainer; }]];
+  function trainerName(id) { var t = id && PROF[id]; return t ? t.name : (id ? '다른 선생님' : ''); }
 
   /* ---------- 직원 화면 계산 ---------- */
   function pcts(m) {
@@ -1520,7 +1535,7 @@ body.pre-auth { padding-block: 0 40px; }
   }
   function hasPain(m) { return m.today && m.today.pain.length && m.today.pain.indexOf('없음') < 0; }
   var FILTERS = [
-    ['all', '전체', function () { return true; }],
+    ['all', '모든 상태', function () { return true; }],
     ['none', '미체크', function (m) { return !m.today; }],
     ['pain', '통증 있음', hasPain],
     ['prot', '단백질 부족', function (m) { var p = pcts(m); return p.valid && p.p < .8; }],
@@ -1549,22 +1564,27 @@ body.pre-auth { padding-block: 0 40px; }
 
   /* ---------- 직원 목록 ---------- */
   function renderStaffList() {
-    var cnt = function (fn) { return members.filter(fn).length; };
+    var all = members.slice();
+    if (scopeSel == null) scopeSel = all.some(SCOPES[0][2]) ? 'mine' : 'all';
+    var sfn = SCOPES.filter(function (x) { return x[0] === scopeSel; })[0][2];
+    $('scopes').innerHTML = SCOPES.map(function (x) { return '<button type="button" class="chip" data-sc="' + x[0] + '" aria-pressed="' + (scopeSel === x[0]) + '">' + x[1] + ' ' + all.filter(x[2]).length + '</button>'; }).join('');
+    var ms = all.filter(sfn);
+    var cnt = function (fn) { return ms.filter(fn).length; };
     var sub = cnt(function (m) { return m.today; });
     $('stats').innerHTML =
-      '<div class="stat"><span>오늘 제출</span><b>' + sub + '<small> / ' + members.length + '명</small></b></div>' +
-      '<div class="stat' + (members.length - sub ? ' hot' : '') + '"><span>미체크</span><b>' + (members.length - sub) + '<small>명</small></b></div>' +
+      '<div class="stat"><span>오늘 제출</span><b>' + sub + '<small> / ' + ms.length + '명</small></b></div>' +
+      '<div class="stat' + (ms.length - sub ? ' hot' : '') + '"><span>미체크</span><b>' + (ms.length - sub) + '<small>명</small></b></div>' +
       '<div class="stat' + (cnt(hasPain) ? ' hot' : '') + '"><span>통증 신고</span><b>' + cnt(hasPain) + '<small>명</small></b></div>' +
       '<div class="stat"><span>단백질 부족</span><b>' + cnt(FILTERS[3][2]) + '<small>명</small></b></div>';
     $('filters').innerHTML = FILTERS.map(function (f) { return '<button type="button" class="chip" data-f="' + f[0] + '" aria-pressed="' + (staffFilter === f[0]) + '">' + f[1] + ' ' + cnt(f[2]) + '</button>'; }).join('') + '<span class="sort">주의할 회원이 위로 와요</span>';
     var fn = FILTERS.filter(function (f) { return f[0] === staffFilter; })[0][2];
-    var list = members.filter(fn).sort(function (a, b) { return score(b) - score(a) || a.id - b.id; });
+    var list = ms.filter(fn).sort(function (a, b) { return score(b) - score(a) || a.id - b.id; });
     $('rows').innerHTML = list.length ? list.map(function (m) {
       var r = m.today, p = pcts(m), w = wInfo(m), fl = flagsOf(m), rec = m.days.filter(function (d) { return d.ok; }).length;
       var stPill = !r ? '<span class="pill warn">미체크</span>' : r.status === 'done' ? '<span class="pill good">완료</span>' : '<span class="pill mute">일부</span>';
       var ago = lastOkAgo(m);
       return '<button type="button" class="row" data-id="' + m.id + '">' +
-        '<span class="who"><b>' + esc(m.name) + '</b><span class="flags">' + (cur && cur.admin ? '<span class="pill mute">' + esc(BRANCH[m.branch] || '') + '</span>' : '') + (fl.length ? fl.map(function (f) { return '<span class="pill ' + f[1] + '">' + esc(f[0]) + '</span>'; }).join('') : '<span class="mute" style="font-size:12px">특이사항 없음</span>') + '</span></span>' +
+        '<span class="who"><b>' + esc(m.name) + '</b><span class="flags">' + (cur && cur.admin ? '<span class="pill mute">' + esc(BRANCH[m.branch] || '') + '</span>' : '') + (m.trainer ? (m.trainer === (cur && cur.acct) ? '' : '<span class="pill mute">담당 ' + esc(trainerName(m.trainer)) + '</span>') : '<span class="pill warn">담당 미지정</span>') + (fl.length ? fl.map(function (f) { return '<span class="pill ' + f[1] + '">' + esc(f[0]) + '</span>'; }).join('') : '<span class="mute" style="font-size:12px">특이사항 없음</span>') + '</span></span>' +
         '<span class="cell" data-l="오늘 기록">' + stPill + (!r && ago != null ? '<small>마지막 ' + (ago === 0 ? '오늘' : ago + '일 전') + '</small>' : '') + '</span>' +
         '<span class="cell" data-l="컨디션">' + dots(r && r.cond, 'cond') + '</span>' +
         '<span class="cell" data-l="통증">' + (hasPain(m) ? '<b>' + esc(r.pain.join('·')) + '</b>' + (r.painI ? '<small>강도 ' + r.painI + '</small>' : '') : '<span class="mute">' + (r ? '없음' : '–') + '</span>') + '</span>' +
@@ -1572,7 +1592,7 @@ body.pre-auth { padding-block: 0 40px; }
         '<span class="cell" data-l="칼로리">' + mini(p.k, p.valid) + '</span>' +
         '<span class="cell" data-l="단백질">' + mini(p.p, p.valid) + '</span>' +
         '<span class="cell nv" data-l="7일 기록"><b>' + rec + '</b><small>/ 7일</small></span></button>';
-    }).join('') : '<p class="empty">조건에 맞는 회원이 없어요.</p>';
+    }).join('') : '<p class="empty">' + (scopeSel === 'mine' && !all.some(SCOPES[0][2]) ? '아직 내 회원이 없어요. "지점 전체"나 "담당 미지정"에서 회원을 열어 "내 회원으로 지정"을 눌러 주세요.' : '조건에 맞는 회원이 없어요.') + '</p>';
   }
 
   /* ---------- 차트 ---------- */
@@ -1618,6 +1638,44 @@ body.pre-auth { padding-block: 0 40px; }
 
   /* ---------- 직원 상세 ---------- */
   function trainedTxt(t) { return t === 'pt' ? 'PT 수업' : t === 'self' ? '개인 운동' : t === 'rest' ? '쉬는 날' : '–'; }
+  var rejectArm = null;
+  function renderApply() {
+    var box = $('applyBox'); if (!box) return;
+    var list = cur && cur.admin ? Object.keys(PROF).map(function (k) { return PROF[k]; }).filter(function (p) { return p.role === 'applicant'; }) : [];
+    box.hidden = !list.length; if (!list.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<h3>직원 가입 승인 대기 ' + list.length + '명</h3><ul>' + list.map(function (p) {
+      return '<li><span><b>' + esc(p.name) + '</b> <span class="pill mute">' + esc(BRANCH[p.branch] || '') + '</span> <small class="mute">' + esc(p.login_id) + '</small></span><span class="inv-act"><button type="button" class="btn sm primary" data-rv="ok" data-id="' + p.id + '">승인</button><button type="button" class="btn sm" data-rv="no" data-id="' + p.id + '">' + (rejectArm === p.id ? '거절 확인' : '거절') + '</button></span></li>';
+    }).join('') + '</ul><p class="hint">승인하면 그 지점 회원을 볼 수 있는 직원이 돼요. 모르는 사람이면 거절해 주세요. 거절하면 계정이 삭제돼요.</p><p class="hint" id="applyMsg" role="status"></p>';
+  }
+  async function reviewStaff(id, okk) {
+    var r = await sb.rpc('review_staff', { p_id: id, p_ok: okk });
+    if (r.error) { $('applyMsg').textContent = '처리하지 못했어요. 잠시 뒤 다시 눌러 주세요.'; loadAll(); return; }
+    rejectArm = null; delete PROF[id]; renderApply(); scheduleReload();
+  }
+  $('applyBox').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-rv]'); if (!b) return;
+    var id = b.getAttribute('data-id'), k = b.getAttribute('data-rv');
+    if (k === 'ok') { reviewStaff(id, true); return; }
+    if (rejectArm === id) { reviewStaff(id, false); return; }
+    rejectArm = id; renderApply();
+  });
+  function assignBlock(m) {
+    if (!cur) return '';
+    var me = cur.acct, mine = m.trainer === me, h = '<div class="asg" id="asgBox"><span>담당 <b>' + (m.trainer ? esc(trainerName(m.trainer)) : '미지정') + '</b></span>';
+    if (cur.admin) {
+      var opts = Object.keys(PROF).map(function (k) { return PROF[k]; }).filter(function (t) { return (t.role === 'staff' || t.role === 'admin') && t.branch === m.branch; });
+      h += '<select id="asgSel" aria-label="담당 선생님"><option value="">미지정</option>' + opts.map(function (t) { return '<option value="' + t.id + '"' + (t.id === m.trainer ? ' selected' : '') + '>' + esc(t.name) + '</option>'; }).join('') + '</select><button type="button" class="btn sm" data-asg="set">변경</button>';
+    } else if (!m.trainer) h += '<button type="button" class="btn sm primary" data-asg="me">내 회원으로 지정</button>';
+    else if (mine) h += '<button type="button" class="btn sm" data-asg="clear">담당 해제</button>';
+    else h += '<small class="mute">담당 변경은 대표님께 요청해 주세요.</small>';
+    return h + '<span class="asg-msg" id="asgMsg" role="status"></span></div>';
+  }
+  async function doAssign(m, tid) {
+    var msg = $('asgMsg'); if (msg) msg.textContent = '저장 중…';
+    var r = await sb.rpc('assign_trainer', { p_member: m.acct, p_trainer: tid });
+    if (r.error) { if (msg) msg.textContent = /already_assigned/.test(r.error.message || '') ? '이미 다른 선생님이 담당하고 있어요.' : '저장하지 못했어요. 잠시 뒤 다시 눌러 주세요.'; loadAll(); return; }
+    m.trainer = tid; renderDetail(m); scheduleReload();
+  }
   function renderDetail(m) {
     var r = m.today, fl = flagsOf(m), ago = lastOkAgo(m);
     var vals = function (k) { return m.days.map(function (d) { return d.ok ? d[k] : null; }); };
@@ -1650,6 +1708,7 @@ body.pre-auth { padding-block: 0 40px; }
           '<div class="kv"><span>목표 대비</span><b>칼로리 ' + Math.round(p.k * 100) + '% · 단백질 ' + Math.round(p.p * 100) + '%</b></div>' +
           advice(r.tot, r.goal || DEFAULT_GOAL, r.meals.length).map(function (a) { return '<div style="display:flex;gap:8px;font-size:13px"><span class="pill ' + a.tone + '" style="flex:none">' + a.label + '</span><span>' + a.text + '</span></div>'; }).join('') : '<p class="empty">오늘 올라온 식단이 없어요.</p>') + '</div></div>';
     }
+    h = h.replace('</div></div>', '</div></div>' + assignBlock(m));
     h += mealsSection(m);
     h += intakeBlock(m);
     h += '<h2 class="sec-t">최근 7일 추이</h2><div class="charts">' +
@@ -1662,10 +1721,12 @@ body.pre-auth { padding-block: 0 40px; }
     $('staffList').hidden = selected != null; $('staffDetail').hidden = selected == null;
     if (selected == null) renderStaffList(); else renderDetail(members[selected]);
   }
+  $('scopes').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { scopeSel = b.getAttribute('data-sc'); renderStaffList(); } });
   $('filters').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { staffFilter = b.getAttribute('data-f'); renderStaffList(); } });
   $('rows').addEventListener('click', function (e) { var b = e.target.closest('.row'); if (b) { selected = +b.getAttribute('data-id'); selDate = todayKey; fbNote = ''; renderStaff(); window.scrollTo(0, 0); } });
   $('staffDetail').addEventListener('click', function (e) {
     if (e.target.id === 'backBtn') { selected = null; renderStaff(); return; }
+    var ab = e.target.closest('[data-asg]'); if (ab && members[selected]) { var mm = members[selected], k = ab.getAttribute('data-asg'); doAssign(mm, k === 'me' ? cur.acct : k === 'clear' ? null : ($('asgSel').value || null)); return; }
     var dc = e.target.closest('[data-d]'); if (dc) { selDate = dc.getAttribute('data-d'); fbNote = ''; renderDetail(members[selected]); return; }
     var big = e.target.closest('[data-big]'); if (big && PH[big.getAttribute('data-big')]) { $('lbImg').src = PH[big.getAttribute('data-big')].img; $('lb').hidden = false; return; }
     var fs = e.target.closest('[data-fbsend]'); if (fs) { sendFb(fs.getAttribute('data-fbsend'), $('fbi' + fs.getAttribute('data-fbidx'))); }
@@ -1843,7 +1904,7 @@ body.pre-auth { padding-block: 0 40px; }
     var uid = cur.acct, staff = cur.role === 'staff', from7 = days7[0].k;
     try {
       var qs = [
-        sb.from('profiles').select('id,login_id,name,branch,role,goal').order('name'),
+        sb.from('profiles').select('id,login_id,name,branch,role,goal,trainer_id').order('name'),
         sb.from('daily_records').select('*').gte('record_date', from7),
         sb.from('meal_photos').select('id,member_id,record_date,slot,path,created_at').gte('record_date', from7),
         sb.from('feedback').select('id,member_id,record_date,slot,author_name,text,created_at').gte('record_date', from7)
@@ -1854,7 +1915,7 @@ body.pre-auth { padding-block: 0 40px; }
       if (!cur || cur.acct !== uid) return;
       for (i = 0; i < rs.length; i++) if (rs[i].error) throw rs[i].error;
       var selUid = selected != null && members[selected] ? members[selected].acct : null;
-      var byId = {}; rs[0].data.forEach(function (p) { byId[p.id] = p; });
+      var byId = {}; rs[0].data.forEach(function (p) { byId[p.id] = p; }); PROF = byId; renderApply();
       members = rs[0].data.filter(function (p) { return staff ? p.role === 'member' : p.id === uid; }).map(buildMember);
       rs[1].data.forEach(applyRecord);
       if (cur.role === 'member' && !formReady) { formReady = true; var me = curMember(); if (me && me.goal) setGoalFields(me.goal); renderAll(); applyDraft(null); }
@@ -1994,6 +2055,14 @@ body.pre-auth { padding-block: 0 40px; }
     if (r.error) { sessionRetry = true; return false; }   /* 연결 문제로 못 읽은 것: 로그아웃하지 않고 다시 시도 */
     if (!r.data) { await sb.auth.signOut(); return false; }
     sessionRetry = false;
+    try { if (r.data.login_id && localStorage.getItem('ardor_lastid') !== '') localStorage.setItem('ardor_lastid', r.data.login_id); } catch (e) { }
+    if (r.data.role === 'applicant') {
+      try { await sb.auth.signOut(); } catch (e) { }
+      wrongSite = null; joinToken = null; JOIN = null; openMode = false; clearHash(); route();
+      if (STAFF_SITE) { $('loginErr').hidden = true; $('loginInfo').textContent = '직원 가입 신청을 받았어요. 대표님이 승인하면 이 아이디로 로그인할 수 있어요.'; $('loginInfo').hidden = false; }
+      else { wrongSite = 'staff'; showWrongSite(); }
+      return false;
+    }
     wrongSite = (r.data.role === 'member') === STAFF_SITE ? (STAFF_SITE ? 'member' : 'staff') : null;
     if (wrongSite) { try { await sb.auth.signOut(); } catch (e) { } showWrongSite(); return false; }
     await enter(r.data); return true;
@@ -2001,6 +2070,7 @@ body.pre-auth { padding-block: 0 40px; }
   async function leave(fromEvent) {
     unsubscribeRealtime(); var was = cur; cur = null; members = []; formReady = false; goalApplied = false; PH = {}; FBK = {}; INV = {}; INTAKE = {}; URLC = {};
     if (was && !fromEvent && sb) { try { await sb.auth.signOut(); } catch (e) { } }
+    try { var li = localStorage.getItem('ardor_lastid'); if (li) $('l_id').value = li; } catch (e) { }
     $('l_pw').value = ''; $('loginErr').hidden = true; $('fbBanner').hidden = true; $('lb').hidden = true; route();
   }
   $('loginForm').addEventListener('submit', async function (e) {
@@ -2011,12 +2081,13 @@ body.pre-auth { padding-block: 0 40px; }
     var btn = e.target.querySelector('button[type=submit]'); btn.disabled = true;
     var r = await sb.auth.signInWithPassword({ email: emailOf(id), password: pw });
     if (r.error || !r.data || !r.data.session) { err.textContent = r.error && r.error.status === 429 ? '시도가 너무 많아요. 잠시 뒤에 다시 해 주세요.' : '아이디나 비밀번호가 맞지 않아요.'; err.hidden = false; btn.disabled = false; return; }
-    err.hidden = true;
+    err.hidden = true; $('loginInfo').hidden = true;
+    try { localStorage.setItem('ardor_keep', $('l_keep').checked ? '1' : '0'); sessionStorage.setItem('ardor_alive', '1'); if ($('l_remid').checked) localStorage.setItem('ardor_lastid', id); else localStorage.setItem('ardor_lastid', ''); } catch (e) { }
     var ok = await startSession(r.data.session);
     if (!ok && !wrongSite) { err.textContent = '계정 정보를 찾지 못했어요. 직원에게 문의해 주세요.'; err.hidden = false; }
     btn.disabled = false;
   });
-  $('logoutBtn').addEventListener('click', function () { clearDraft(); leave(false); });
+  $('logoutBtn').addEventListener('click', function () { saveDraft(); leave(false); });
 
   /* ---------- 초대 링크와 가입 ---------- */
   var inviteLink = function (t, role) { return location.origin + (role && role !== 'member' ? '/staff' : '/') + '#j-' + t; };
@@ -2056,10 +2127,10 @@ body.pre-auth { padding-block: 0 40px; }
     $('j_name').readOnly = !openMode; $('j_branchWrap').hidden = !openMode;
     if (openMode) {
       if (!sb) { info.textContent = '앱 설정이 아직 끝나지 않았어요. 관리자에게 알려 주세요.'; return; }
-      if (OPEN_ON === false) { info.textContent = '지금은 초대 링크로만 가입할 수 있어요. 직원에게 링크를 요청해 주세요.'; return; }
-      $('joinEyebrow').textContent = ''; $('joinTitle').textContent = '회원 가입';
-      info.textContent = '이름과 지점을 고르고, 아이디와 비밀번호를 정하면 바로 시작할 수 있어요.';
-      $('intake').hidden = false; $('sensWrap').hidden = false; f.hidden = false; return;
+      if (OPEN_ON === false) { info.textContent = STAFF_SITE ? '지금은 직원 가입 신청을 받지 않아요. 대표님께 초대 링크를 요청해 주세요.' : '지금은 초대 링크로만 가입할 수 있어요. 직원에게 링크를 요청해 주세요.'; return; }
+      $('joinEyebrow').textContent = ''; $('joinTitle').textContent = STAFF_SITE ? '직원 가입 신청' : '회원 가입';
+      info.textContent = STAFF_SITE ? '이름과 근무 지점을 고르고, 아이디와 비밀번호를 정해 신청하세요. 대표님이 승인하면 로그인할 수 있어요.' : '이름과 지점을 고르고, 아이디와 비밀번호를 정하면 바로 시작할 수 있어요.';
+      $('intake').hidden = STAFF_SITE; $('sensWrap').hidden = STAFF_SITE; f.hidden = false; return;
     }
     if (!sb) { info.textContent = '앱 설정이 아직 끝나지 않았어요. 관리자에게 알려 주세요.'; return; }
     if (!JOIN) { info.textContent = '초대 정보를 확인하는 중이에요…'; return; }
@@ -2084,10 +2155,9 @@ body.pre-auth { padding-block: 0 40px; }
     renderJoin();
   }
   async function openSelf() {
-    if (STAFF_SITE) return;
     openMode = true; joinToken = null; JOIN = null; $('joinErr').hidden = true; renderJoin(); route();
     if (!sb || OPEN_ON !== null) return;
-    var r = await sb.rpc('open_signup_on'); OPEN_ON = r.error ? true : r.data !== false; if (openMode) renderJoin();
+    var r = await sb.rpc(STAFF_SITE ? 'open_staff_signup_on' : 'open_signup_on'); OPEN_ON = r.error ? true : r.data !== false; if (openMode) renderJoin();
   }
   $('j_self').addEventListener('click', openSelf);
   $('invBtn').addEventListener('click', async function () {
@@ -2111,7 +2181,7 @@ body.pre-auth { padding-block: 0 40px; }
   $('joinForm').addEventListener('submit', async function (e) {
     e.preventDefault(); if (joining || !sb || (!openMode && (!JOIN || JOIN.status !== 'ok'))) return;
     var err = function (m) { $('joinErr').textContent = m; $('joinErr').hidden = false; };
-    var id = $('j_id').value.trim().toLowerCase(), pw = $('j_pw').value, isMember = openMode || JOIN.role === 'member';
+    var id = $('j_id').value.trim().toLowerCase(), pw = $('j_pw').value, isMember = openMode ? !STAFF_SITE : JOIN.role === 'member';
     var nm = $('j_name').value.trim(), br = $('j_branch').value;
     if (openMode && !nm) { err('이름을 입력해 주세요.'); return; }
     if (openMode && !br) { err('다니는 지점을 골라 주세요.'); return; }
@@ -2122,13 +2192,13 @@ body.pre-auth { padding-block: 0 40px; }
     if (!$('j_priv').checked) { err('개인정보 수집·이용에 동의해야 가입할 수 있어요.'); return; }
     $('joinErr').hidden = true; joining = true; $('joinBtn').disabled = true;
     try {
-      var r = await sb.auth.signUp({ email: emailOf(id), password: pw, options: { data: openMode ? { login_id: id, name: nm, branch: br } : { invite: joinToken, login_id: id } } });
+      var r = await sb.auth.signUp({ email: emailOf(id), password: pw, options: { data: openMode ? (STAFF_SITE ? { login_id: id, name: nm, branch: br, as_staff: '1' } : { login_id: id, name: nm, branch: br }) : { invite: joinToken, login_id: id } } });
       if (r.error) {
         var m = String(r.error.message || '');
         if (/already|registered|exists/i.test(m)) err('이미 쓰는 아이디예요. 다른 아이디를 골라 주세요.');
         else if (/password/i.test(m)) err('비밀번호가 너무 약해요. 더 길고 복잡하게 정해 주세요.');
         else if (r.error.status === 429) err('시도가 너무 많아요. 잠시 뒤에 다시 해 주세요.');
-        else err((openMode ? '가입하지 못했어요. 잠시 뒤 다시 해 보고, 계속 안 되면 직원에게 알려 주세요.' : '가입하지 못했어요. 초대 링크가 이미 쓰였을 수 있어요. 직원에게 새 링크를 요청해 주세요.') + ' (오류 코드: ' + (r.error.code || r.error.status || 'unknown') + ')');
+        else err((openMode ? (STAFF_SITE ? '신청하지 못했어요. 잠시 뒤 다시 해 보고, 계속 안 되면 대표님께 알려 주세요.' : '가입하지 못했어요. 잠시 뒤 다시 해 보고, 계속 안 되면 직원에게 알려 주세요.') : '가입하지 못했어요. 초대 링크가 이미 쓰였을 수 있어요. 직원에게 새 링크를 요청해 주세요.') + ' (오류 코드: ' + (r.error.code || r.error.status || 'unknown') + ')');
       } else if (!r.data || !r.data.session) {
         err('가입은 됐지만 바로 로그인되지 않았어요. 로그인 화면에서 로그인해 주세요.');
       } else {
@@ -2248,7 +2318,7 @@ body.pre-auth { padding-block: 0 40px; }
   resetIntake(); resetMember(); renderAll();
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function () { }); }
   if (STAFF_SITE) {
-    document.querySelector('#loginView .newhere').hidden = true; document.querySelector('#loginView h1').textContent = '직원 로그인';
+    document.querySelector('#loginView h1').textContent = '직원 로그인'; $('selfHint').textContent = '처음이세요? 이름과 지점, 아이디와 비밀번호를 정해 신청하면 대표님이 승인해요.'; $('j_self').textContent = '직원 가입 신청하기';
     document.querySelectorAll('.hero span').forEach(function (el) { el.textContent = '직원용'; });
   }
   var startTok = tokenFrom(location.hash); if (startTok) joinToken = startTok;
@@ -2257,11 +2327,19 @@ body.pre-auth { padding-block: 0 40px; }
   if (!sb) { $('loginErr').textContent = '앱 설정이 아직 끝나지 않았어요. 관리자에게 알려 주세요.'; $('loginErr').hidden = false; if (joinToken || openMode) renderJoin(); }
   else {
     sb.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT' && cur) leave(true); });
-    sb.rpc('open_signup_on').then(function (r) { OPEN_ON = r.error ? true : r.data !== false; if (OPEN_ON === false) { $('j_self').hidden = true; $('selfHint').textContent = '지금은 초대 링크로만 가입할 수 있어요. 직원에게 받은 링크를 눌러 주세요.'; } if (openMode) renderJoin(); }, function () { });
+    sb.rpc(STAFF_SITE ? 'open_staff_signup_on' : 'open_signup_on').then(function (r) { OPEN_ON = r.error ? true : r.data !== false; if (OPEN_ON === false) { $('j_self').hidden = true; $('selfHint').textContent = STAFF_SITE ? '지금은 직원 가입 신청을 받지 않아요. 대표님께 받은 초대 링크를 눌러 주세요.' : '지금은 초대 링크로만 가입할 수 있어요. 직원에게 받은 링크를 눌러 주세요.'; } if (openMode) renderJoin(); }, function () { });
     if (joinToken) openJoin(joinToken); else if (openMode) renderJoin();
     else {
+      try {
+        var lid = localStorage.getItem('ardor_lastid'); if (lid && !$('l_id').value) $('l_id').value = lid; if (lid === null) $('l_remid').checked = true; else $('l_remid').checked = !!lid;
+        $('l_keep').checked = localStorage.getItem('ardor_keep') !== '0';
+      } catch (e) { }
       var restore = function (n) {
-        sb.auth.getSession().then(function (r) { if (r.data && r.data.session) return startSession(r.data.session).then(function (ok) { if (!ok && sessionRetry) { if (n < 4) setTimeout(function () { restore(n + 1); }, 2500); else { $('loginErr').textContent = '연결이 불안정해요. 잠시 뒤 앱을 다시 열어 주세요.'; $('loginErr').hidden = false; } } }); }).catch(function () { if (n < 4) setTimeout(function () { restore(n + 1); }, 2500); });
+        sb.auth.getSession().then(function (r) {
+          var drop = false; try { drop = localStorage.getItem('ardor_keep') === '0' && !sessionStorage.getItem('ardor_alive'); } catch (e) { }
+          if (drop && r.data && r.data.session) { return sb.auth.signOut(); }
+          try { sessionStorage.setItem('ardor_alive', '1'); } catch (e) { }
+          if (r.data && r.data.session) return startSession(r.data.session).then(function (ok) { if (!ok && sessionRetry) { if (n < 4) setTimeout(function () { restore(n + 1); }, 2500); else { $('loginErr').textContent = '연결이 불안정해요. 잠시 뒤 앱을 다시 열어 주세요.'; $('loginErr').hidden = false; } } }); }).catch(function () { if (n < 4) setTimeout(function () { restore(n + 1); }, 2500); });
       };
       restore(0);
       try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { }
