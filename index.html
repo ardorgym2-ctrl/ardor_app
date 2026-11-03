@@ -637,10 +637,10 @@ body.pre-auth { padding-block: 0 40px; }
 </div>
 <div class="pane" data-pane="cond" hidden>
 <section class="sec" aria-labelledby="h-cond">
-    <div class="sec-h"><h2 id="h-cond">오늘 몸 상태</h2><p>1은 낮음, 5는 높음이에요.</p></div>
-    <div class="q"><div class="q-h"><span>컨디션</span><small>1 나쁨 · 5 아주 좋음</small></div><div class="rate" data-k="cond"></div></div>
-    <div class="q"><div class="q-h"><span>피로도</span><small>1 개운함 · 5 많이 피곤함</small></div><div class="rate" data-k="fatigue"></div></div>
-    <div class="q"><div class="q-h"><span>스트레스</span><small>지금 기분에 가까운 얼굴</small></div><div class="rate" data-k="stress"></div></div>
+    <div class="sec-h"><h2 id="h-cond">오늘 몸 상태</h2><p>지금 상태에 가까운 얼굴을 골라 주세요.</p></div>
+    <div class="q"><div class="q-h"><span>컨디션</span><small>오른쪽일수록 좋아요</small></div><div class="rate" data-k="cond"></div></div>
+    <div class="q"><div class="q-h"><span>피로도</span><small>오른쪽일수록 피곤해요</small></div><div class="rate" data-k="fatigue"></div></div>
+    <div class="q"><div class="q-h"><span>스트레스</span><small>오른쪽일수록 힘들어요</small></div><div class="rate" data-k="stress"></div></div>
     <div class="q"><div class="q-h"><span>아픈 곳이 있나요?</span><small>여러 개 선택할 수 있어요</small></div><div class="chips" id="pain"></div></div>
     <div class="q" id="painIWrap" hidden><div class="q-h"><span>아픈 정도</span></div><div class="opts" id="painI"></div></div>
   </section>
@@ -878,25 +878,34 @@ body.pre-auth { padding-block: 0 40px; }
     $('wk').hidden = $('addWk').hidden = S.trained === 'rest';
   }
   /* 얼굴 표정 (포만감·스트레스) */
-  var MOUTH = { big: 'M7 14 Q12 19.5 17 14', smile: 'M8 15 Q12 18 16 15', flat: 'M8 16 H16', low: 'M8 17.5 Q12 14.5 16 17.5', sad: 'M7 18.5 Q12 12.5 17 18.5' };
+  var MOUTH = { big: 'M7 14 Q12 19.5 17 14', smile: 'M8 15 Q12 18 16 15', flat: 'M8 16 H16', low: 'M8 17.5 Q12 14.5 16 17.5', sad: 'M7 18.5 Q12 12.5 17 18.5', yawn: 'M10 15 a2 2.3 0 1 0 4 0 a2 2.3 0 1 0 -4 0' };
+  /* 눈 종류: 0 동그란 눈, 1 찡그린 눈, 2 감은 눈, 3 웃는 눈(^ ^)  /  5번째 값 1 이면 땀방울 */
+  var EYES = [
+    '<circle cx="9" cy="10" r="1.3" fill="currentColor"/><circle cx="15" cy="10" r="1.3" fill="currentColor"/>',
+    '<path d="M7.5 8.5 L10.5 10 L7.5 11.5 M16.5 8.5 L13.5 10 L16.5 11.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+    '<path d="M7.5 10 Q9 11.6 10.5 10 M13.5 10 Q15 11.6 16.5 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+    '<path d="M7.5 11 Q9 8.4 10.5 11 M13.5 11 Q15 8.4 16.5 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>'
+  ];
   var FULL_FACES = [['sad', '많이 배고팠어요', '많이 배고픔'], ['flat', '조금 아쉬웠어요', '조금 아쉬움'], ['big', '딱 좋았어요', '딱 좋음'], ['smile', '배불렀어요', '배부름'], ['sad', '너무 많이 먹었어요', '과식', 1]];
-  var STRESS_FACES = [['big', '편안해요', '편안'], ['smile', '괜찮아요', '괜찮음'], ['flat', '보통이에요', '보통'], ['low', '힘들어요', '힘듦'], ['sad', '매우 힘들어요', '매우 힘듦', 1]];
-  function faceSVG(mouth, squint) {
-    var eyes = squint ? '<path d="M7.5 8.5 L10.5 10 L7.5 11.5 M16.5 8.5 L13.5 10 L16.5 11.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' : '<circle cx="9" cy="10" r="1.3" fill="currentColor"/><circle cx="15" cy="10" r="1.3" fill="currentColor"/>';
-    return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/>' + eyes + '<path d="' + MOUTH[mouth] + '" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  var COND_FACES = [['sad', '컨디션 나쁨', '나쁨'], ['low', '컨디션 별로', '별로'], ['flat', '컨디션 보통', '보통'], ['smile', '컨디션 좋음', '좋음'], ['big', '컨디션 아주 좋음', '아주 좋음', 3]];
+  var FATIGUE_FACES = [['big', '개운해요', '개운', 3], ['smile', '괜찮아요', '괜찮음'], ['flat', '보통이에요', '보통'], ['flat', '피곤해요', '피곤', 2], ['yawn', '많이 피곤해요', '많이 피곤', 2]];
+  var STRESS_FACES = [['big', '편안해요', '편안'], ['smile', '괜찮아요', '괜찮음'], ['flat', '보통이에요', '보통'], ['low', '힘들어요', '힘듦', 0, 1], ['sad', '매우 힘들어요', '매우 힘듦', 1, 1]];
+  var RATE_SETS = { cond: [COND_FACES, '컨디션'], fatigue: [FATIGUE_FACES, '피로도'], stress: [STRESS_FACES, '스트레스'] };
+  function faceSVG(mouth, eye, drop) {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/>' + EYES[eye || 0] + '<path d="' + MOUTH[mouth] + '" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' + (drop ? '<path d="M19 4.2 q1.6 2.2 0 3.3 q-1.6 -1.1 0 -3.3z" fill="currentColor"/>' : '') + '</svg>';
   }
   function facesHTML(set, cur, what) {
-    return set.map(function (f, i) { var v = i + 1; return '<button type="button" data-v="' + v + '" aria-pressed="' + (cur === v) + '" aria-label="' + esc(what + ': ' + f[1]) + '">' + faceSVG(f[0], f[3]) + '<span>' + f[2] + '</span></button>'; }).join('');
+    return set.map(function (f, i) { var v = i + 1; return '<button type="button" data-v="' + v + '" aria-pressed="' + (cur === v) + '" aria-label="' + esc(what + ': ' + f[1]) + '">' + faceSVG(f[0], f[3], f[4]) + '<span>' + f[2] + '</span></button>'; }).join('');
   }
   function faceInline(set, v) {
     if (v == null || !set[v - 1]) return '<span class="mute">–</span>';
-    var f = set[v - 1]; return '<span class="face-s">' + faceSVG(f[0], f[3]) + '<span>' + f[2] + '</span></span>';
+    var f = set[v - 1]; return '<span class="face-s">' + faceSVG(f[0], f[3], f[4]) + '<span>' + f[2] + '</span></span>';
   }
   function renderRates() {
     document.querySelectorAll('.rate').forEach(function (el) {
       var k = el.getAttribute('data-k');
-      if (k === 'stress') { el.classList.add('faces'); el.innerHTML = facesHTML(STRESS_FACES, S.stress, '스트레스'); return; }
-      el.innerHTML = [1, 2, 3, 4, 5].map(function (v) { return '<button type="button" data-v="' + v + '" aria-pressed="' + (S[k] === v) + '" aria-label="' + v + '점">' + v + '</button>'; }).join('');
+      var rs = RATE_SETS[k]; if (!rs) return;
+      el.classList.add('faces'); el.innerHTML = facesHTML(rs[0], S[k], rs[1]);
     });
   }
   var PAINS = ['없음', '목', '어깨', '허리', '무릎', '손목', '발목', '기타'];
