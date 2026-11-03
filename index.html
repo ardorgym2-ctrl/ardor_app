@@ -1860,7 +1860,7 @@ body.pre-auth { padding-block: 0 40px; }
   var emailOf = function (id) { return id + '@' + EMAIL_DOMAIN; };
   var LOGIN_RE = /^[a-z][a-z0-9_-]{3,15}$/;
   if (window.supabase && cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && !/YOUR_/.test(cfg.SUPABASE_URL + cfg.SUPABASE_ANON_KEY)) {
-    sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
+    sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: STAFF_SITE ? 'ardor-staff-auth' : 'sb-' + (String(cfg.SUPABASE_URL).match(/\/\/([^.]+)\./) || [0, 'ardor'])[1] + '-auth-token' } });
   }
   function memberByAcct(a) { return members.filter(function (m) { return m.acct === a; })[0]; }
   function curMember() { return cur ? memberByAcct(cur.acct) : null; }
@@ -2053,23 +2053,23 @@ body.pre-auth { padding-block: 0 40px; }
   async function startSession(session) {
     var r = await sb.from('profiles').select('id,login_id,name,branch,role,goal').eq('id', session.user.id).maybeSingle();
     if (r.error) { sessionRetry = true; return false; }   /* 연결 문제로 못 읽은 것: 로그아웃하지 않고 다시 시도 */
-    if (!r.data) { await sb.auth.signOut(); return false; }
+    if (!r.data) { await sb.auth.signOut({ scope: 'local' }); return false; }
     sessionRetry = false;
     try { if (r.data.login_id && localStorage.getItem('ardor_lastid') !== '') localStorage.setItem('ardor_lastid', r.data.login_id); } catch (e) { }
     if (r.data.role === 'applicant') {
-      try { await sb.auth.signOut(); } catch (e) { }
+      try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { }
       wrongSite = null; joinToken = null; JOIN = null; openMode = false; clearHash(); route();
       if (STAFF_SITE) { $('loginErr').hidden = true; $('loginInfo').textContent = '직원 가입 신청을 받았어요. 대표님이 승인하면 이 아이디로 로그인할 수 있어요.'; $('loginInfo').hidden = false; }
       else { wrongSite = 'staff'; showWrongSite(); }
       return false;
     }
     wrongSite = (r.data.role === 'member') === STAFF_SITE ? (STAFF_SITE ? 'member' : 'staff') : null;
-    if (wrongSite) { try { await sb.auth.signOut(); } catch (e) { } showWrongSite(); return false; }
+    if (wrongSite) { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { } showWrongSite(); return false; }
     await enter(r.data); return true;
   }
   async function leave(fromEvent) {
     unsubscribeRealtime(); var was = cur; cur = null; members = []; formReady = false; goalApplied = false; PH = {}; FBK = {}; INV = {}; INTAKE = {}; URLC = {};
-    if (was && !fromEvent && sb) { try { await sb.auth.signOut(); } catch (e) { } }
+    if (was && !fromEvent && sb) { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { } }
     try { var li = localStorage.getItem('ardor_lastid'); if (li) $('l_id').value = li; } catch (e) { }
     $('l_pw').value = ''; $('loginErr').hidden = true; $('fbBanner').hidden = true; $('lb').hidden = true; route();
   }
@@ -2337,7 +2337,7 @@ body.pre-auth { padding-block: 0 40px; }
       var restore = function (n) {
         sb.auth.getSession().then(function (r) {
           var drop = false; try { drop = localStorage.getItem('ardor_keep') === '0' && !sessionStorage.getItem('ardor_alive'); } catch (e) { }
-          if (drop && r.data && r.data.session) { return sb.auth.signOut(); }
+          if (drop && r.data && r.data.session) { return sb.auth.signOut({ scope: 'local' }); }
           try { sessionStorage.setItem('ardor_alive', '1'); } catch (e) { }
           if (r.data && r.data.session) return startSession(r.data.session).then(function (ok) { if (!ok && sessionRetry) { if (n < 4) setTimeout(function () { restore(n + 1); }, 2500); else { $('loginErr').textContent = '연결이 불안정해요. 잠시 뒤 앱을 다시 열어 주세요.'; $('loginErr').hidden = false; } } }); }).catch(function () { if (n < 4) setTimeout(function () { restore(n + 1); }, 2500); });
       };
