@@ -1565,6 +1565,7 @@ body.pre-auth { padding-block: 0 40px; }
   /* ---------- 직원 목록 ---------- */
   function renderStaffList() {
     var all = members.slice();
+    var nt = NO_TRAINER_COL ? '<p class="err">담당 기능을 쓰려면 Supabase에서 add_trainer.sql 을 먼저 실행해 주세요.</p>' : '';
     if (scopeSel == null) scopeSel = all.some(SCOPES[0][2]) ? 'mine' : 'all';
     var sfn = SCOPES.filter(function (x) { return x[0] === scopeSel; })[0][2];
     $('scopes').innerHTML = SCOPES.map(function (x) { return '<button type="button" class="chip" data-sc="' + x[0] + '" aria-pressed="' + (scopeSel === x[0]) + '">' + x[1] + ' ' + all.filter(x[2]).length + '</button>'; }).join('');
@@ -1579,7 +1580,7 @@ body.pre-auth { padding-block: 0 40px; }
     $('filters').innerHTML = FILTERS.map(function (f) { return '<button type="button" class="chip" data-f="' + f[0] + '" aria-pressed="' + (staffFilter === f[0]) + '">' + f[1] + ' ' + cnt(f[2]) + '</button>'; }).join('') + '<span class="sort">주의할 회원이 위로 와요</span>';
     var fn = FILTERS.filter(function (f) { return f[0] === staffFilter; })[0][2];
     var list = ms.filter(fn).sort(function (a, b) { return score(b) - score(a) || a.id - b.id; });
-    $('rows').innerHTML = list.length ? list.map(function (m) {
+    $('rows').innerHTML = nt + (list.length ? list.map(function (m) {
       var r = m.today, p = pcts(m), w = wInfo(m), fl = flagsOf(m), rec = m.days.filter(function (d) { return d.ok; }).length;
       var stPill = !r ? '<span class="pill warn">미체크</span>' : r.status === 'done' ? '<span class="pill good">완료</span>' : '<span class="pill mute">일부</span>';
       var ago = lastOkAgo(m);
@@ -1592,7 +1593,7 @@ body.pre-auth { padding-block: 0 40px; }
         '<span class="cell" data-l="칼로리">' + mini(p.k, p.valid) + '</span>' +
         '<span class="cell" data-l="단백질">' + mini(p.p, p.valid) + '</span>' +
         '<span class="cell nv" data-l="7일 기록"><b>' + rec + '</b><small>/ 7일</small></span></button>';
-    }).join('') : '<p class="empty">' + (scopeSel === 'mine' && !all.some(SCOPES[0][2]) ? '아직 내 회원이 없어요. "지점 전체"나 "담당 미지정"에서 회원을 열어 "내 회원으로 지정"을 눌러 주세요.' : '조건에 맞는 회원이 없어요.') + '</p>';
+    }).join('') : '<p class="empty">' + (scopeSel === 'mine' && !all.some(SCOPES[0][2]) ? '아직 내 회원이 없어요. "지점 전체"나 "담당 미지정"에서 회원을 열어 "내 회원으로 지정"을 눌러 주세요.' : '조건에 맞는 회원이 없어요.') + '</p>');
   }
 
   /* ---------- 차트 ---------- */
@@ -1638,7 +1639,7 @@ body.pre-auth { padding-block: 0 40px; }
 
   /* ---------- 직원 상세 ---------- */
   function trainedTxt(t) { return t === 'pt' ? 'PT 수업' : t === 'self' ? '개인 운동' : t === 'rest' ? '쉬는 날' : '–'; }
-  var rejectArm = null;
+  var NO_TRAINER_COL = false, rejectArm = null;
   function renderApply() {
     var box = $('applyBox'); if (!box) return;
     var list = cur && cur.admin ? Object.keys(PROF).map(function (k) { return PROF[k]; }).filter(function (p) { return p.role === 'applicant'; }) : [];
@@ -1912,6 +1913,9 @@ body.pre-auth { padding-block: 0 40px; }
       if (!staff) qs.push(sb.from('daily_records').select('record_date,weight,body_fat,muscle,tot').gte('record_date', addDays(todayKey, -119)).order('record_date', { ascending: true }));
       if (staff) { qs.push(sb.from('invites').select('*').order('created_at', { ascending: false }).limit(40)); qs.push(sb.from('intake').select('*')); }
       var rs = await Promise.all(qs), i;
+      if (rs[0].error && /trainer_id/.test(String(rs[0].error.message || ''))) {   /* add_trainer.sql 을 아직 안 돌린 DB: 담당 없이도 목록은 보이게 */
+        NO_TRAINER_COL = true; rs[0] = await sb.from('profiles').select('id,login_id,name,branch,role,goal').order('name');
+      }
       if (!cur || cur.acct !== uid) return;
       for (i = 0; i < rs.length; i++) if (rs[i].error) throw rs[i].error;
       var selUid = selected != null && members[selected] ? members[selected].acct : null;
