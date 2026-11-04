@@ -543,7 +543,8 @@ body.pre-auth { padding-block: 0 40px; }
       <div class="f"><label for="j_id">아이디</label><input id="j_id" class="txt big" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="영문 소문자와 숫자 4~16자"></div>
       <div class="f"><label for="j_pw">비밀번호</label><input id="j_pw" class="txt big" type="password" placeholder="8자 이상" autocomplete="new-password"></div>
       <div class="f"><label for="j_pw2">비밀번호 확인</label><input id="j_pw2" class="txt big" type="password" autocomplete="new-password"></div>
-      <div class="cs">
+      <p class="hint" id="staffNotice" hidden>이름·아이디·지점은 직원 계정 관리와 회원 담당 배정에만 쓰여요. 비밀번호는 암호화해서 저장하고, 퇴사하면 계정을 삭제해요.</p>
+      <div class="cs" id="csBox">
         <label class="consent"><input type="checkbox" id="j_age"><span><b>[필수]</b> 만 14세 이상이에요.</span></label>
         <label class="consent"><input type="checkbox" id="j_priv"><span><b>[필수]</b> 개인정보 수집·이용에 동의해요.</span></label>
         <details><summary>자세히 보기</summary><ul>
@@ -2197,8 +2198,8 @@ body.pre-auth { padding-block: 0 40px; }
     if (!LOGIN_RE.test(id)) { err('아이디는 영문 소문자로 시작하는 4~16자(숫자, -, _ 가능)로 만들어 주세요.'); return; }
     if (pw.length < 8) { err('비밀번호는 8자 이상으로 정해 주세요.'); return; }
     if (pw !== $('j_pw2').value) { err('비밀번호가 서로 달라요.'); return; }
-    if (!$('j_age').checked) { err('만 14세 이상이어야 가입할 수 있어요.'); return; }
-    if (!$('j_priv').checked) { err('개인정보 수집·이용에 동의해야 가입할 수 있어요.'); return; }
+    if (!STAFF_SITE && !$('j_age').checked) { err('만 14세 이상이어야 가입할 수 있어요.'); return; }
+    if (!STAFF_SITE && !$('j_priv').checked) { err('개인정보 수집·이용에 동의해야 가입할 수 있어요.'); return; }
     $('joinErr').hidden = true; joining = true; $('joinBtn').disabled = true;
     try {
       var r = await sb.auth.signUp({ email: emailOf(id), password: pw, options: { data: openMode ? (STAFF_SITE ? { login_id: id, name: nm, branch: br, as_staff: '1' } : { login_id: id, name: nm, branch: br }) : { invite: joinToken, login_id: id } } });
@@ -2327,6 +2328,7 @@ body.pre-auth { padding-block: 0 40px; }
   resetIntake(); resetMember(); renderAll();
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function () { }); }
   if (STAFF_SITE) {
+    $('csBox').hidden = true; $('staffNotice').hidden = false;
     document.querySelector('#loginView h1').textContent = '직원 로그인'; $('selfHint').textContent = '처음이세요? 이름과 지점, 아이디와 비밀번호를 정해 신청하면 대표님이 승인해요.'; $('j_self').textContent = '직원 가입 신청하기';
     document.querySelectorAll('.hero span').forEach(function (el) { el.textContent = '직원용'; });
   }
