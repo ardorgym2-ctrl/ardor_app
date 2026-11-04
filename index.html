@@ -231,6 +231,9 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .q { display: flex; flex-direction: column; gap: 6px; }
 .q-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .q-h small { font-size: 12px; color: var(--ink-2); }
+.pi-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.pi-row > b { min-width: 3em; font-size: 14px; }
+.pi-row .opts { flex: 1; }
 .rate { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
 .rate button { height: 44px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font: 600 20px var(--display); cursor: pointer; }
 .rate button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
@@ -650,11 +653,11 @@ body.pre-auth { padding-block: 0 40px; }
 <div class="pane" data-pane="cond" hidden>
 <section class="sec" aria-labelledby="h-cond">
     <div class="sec-h"><h2 id="h-cond">오늘 몸 상태</h2><p>지금 상태에 가까운 얼굴을 골라 주세요.</p></div>
-    <div class="q"><div class="q-h"><span>컨디션</span><small>왼쪽일수록 좋아요</small></div><div class="rate" data-k="cond"></div></div>
-    <div class="q"><div class="q-h"><span>피로도</span><small>오른쪽일수록 피곤해요</small></div><div class="rate" data-k="fatigue"></div></div>
-    <div class="q"><div class="q-h"><span>스트레스</span><small>오른쪽일수록 힘들어요</small></div><div class="rate" data-k="stress"></div></div>
+    <div class="q"><div class="q-h"><span>컨디션</span></div><div class="rate" data-k="cond"></div></div>
+    <div class="q"><div class="q-h"><span>피로도</span></div><div class="rate" data-k="fatigue"></div></div>
+    <div class="q"><div class="q-h"><span>스트레스</span></div><div class="rate" data-k="stress"></div></div>
     <div class="q"><div class="q-h"><span>아픈 곳이 있나요?</span><small>여러 개 선택할 수 있어요</small></div><div class="chips" id="pain"></div></div>
-    <div class="q" id="painIWrap" hidden><div class="q-h"><span>아픈 정도</span></div><div class="opts" id="painI"></div></div>
+    <div class="q" id="painIWrap" hidden><div class="q-h"><span>아픈 정도</span><small>부위마다 골라 주세요</small></div><div id="painI"></div></div>
   </section>
 
     <button type="button" class="btn" data-gohome style="width:100%;margin-top:22px">다 적었어요 · 제출하러 가기</button>
@@ -864,7 +867,7 @@ body.pre-auth { padding-block: 0 40px; }
   var DEFAULT_GOAL = { kcal: 2000, carb: 240, prot: 130, fat: 55 };
   function setGoalFields(g) { setField('g_kcal', g.kcal); setField('g_carb', g.carb); setField('g_prot', g.prot); setField('g_fat', g.fat); if (g.sw != null) setField('g_sw', g.sw); if (g.tw != null) setField('g_tw', g.tw); }
   function resetMember() {
-    S = { trained: null, cond: null, fatigue: null, stress: null, pain: [], painI: null };
+    S = { trained: null, cond: null, fatigue: null, stress: null, pain: [], painI: null, painL: {} };
     workouts = []; meals = blankMeals(); PK = newPK(); removedPhotos = [];
     setGoalFields(DEFAULT_GOAL);
     ['q_weight', 'q_sleep', 'q_steps', 'q_water', 'q_muscle', 'q_bf', 'g_sw', 'g_tw'].forEach(function (id) { setField(id, ''); });
@@ -927,8 +930,22 @@ body.pre-auth { padding-block: 0 40px; }
     $('pain').innerHTML = PAINS.map(function (p) { return '<button type="button" class="chip" data-v="' + p + '" aria-pressed="' + (S.pain.indexOf(p) >= 0) + '">' + p + '</button>'; }).join('');
     var has = S.pain.length && S.pain.indexOf('없음') < 0;
     $('painIWrap').hidden = !has;
-    $('painI').innerHTML = ['약', '중', '강'].map(function (p) { return '<button type="button" class="opt" data-v="' + p + '" aria-pressed="' + (S.painI === p) + '">' + p + '</button>'; }).join('');
+    $('painI').innerHTML = has ? S.pain.map(function (n) { return '<div class="pi-row" data-p="' + esc(n) + '"><b>' + esc(n) + '</b><div class="opts pi">' + ['약', '중', '강'].map(function (l) { return '<button type="button" class="opt" data-v="' + l + '" aria-pressed="' + (S.painL[n] === l) + '" aria-label="' + esc(n + ' 아픈 정도: ' + l) + '">' + l + '</button>'; }).join('') + '</div></div>'; }).join('') : '';
   }
+  var LV = ['약', '중', '강'];
+  function parsePain(arr, legacy) {
+    var names = [], lv = {};
+    (arr || []).forEach(function (e) {
+      var x = String(e).split(':'), n = x[0];
+      if (PAINS.indexOf(n) < 0 || names.indexOf(n) >= 0) return;
+      names.push(n); if (LV.indexOf(x[1]) >= 0) lv[n] = x[1];
+    });
+    if (LV.indexOf(legacy) >= 0) names.forEach(function (n) { if (n !== '없음' && !lv[n]) lv[n] = legacy; });
+    return { names: names, lv: lv };
+  }
+  function encPain() { return S.pain.map(function (n) { return S.painL[n] ? n + ':' + S.painL[n] : n; }); }
+  function topLevel(lv, names) { var t = null; (names || Object.keys(lv)).forEach(function (n) { var i = LV.indexOf(lv[n]); if (i > LV.indexOf(t)) t = lv[n]; }); return t; }
+  function painStr(r, sep) { return r.pain.map(function (n) { return n + (r.painL && r.painL[n] ? '(' + r.painL[n] + ')' : ''); }).join(sep || '·'); }
   function renderWk() {
     var h = '<div class="wk-row wk-head"><span>종목</span><span>무게(kg)</span><span>세트</span><span>횟수</span><span></span></div>';
     workouts.forEach(function (w, i) {
@@ -1447,10 +1464,10 @@ body.pre-auth { padding-block: 0 40px; }
     if (par.id === 'pain') {
       if (v === '없음') S.pain = S.pain.indexOf('없음') >= 0 ? [] : ['없음'];
       else { S.pain = S.pain.filter(function (x) { return x !== '없음'; }); var ix = S.pain.indexOf(v); if (ix >= 0) S.pain.splice(ix, 1); else S.pain.push(v); }
-      if (!S.pain.length || S.pain.indexOf('없음') >= 0) S.painI = null;
+      if (!S.pain.length || S.pain.indexOf('없음') >= 0) S.painL = {}; else Object.keys(S.painL).forEach(function (k) { if (S.pain.indexOf(k) < 0) delete S.painL[k]; });
       renderPain(); refresh(); return;
     }
-    if (par.id === 'painI') { S.painI = v; renderPain(); return; }
+    if (par.classList.contains('pi')) { var pp = par.parentElement.getAttribute('data-p'); if (S.painL[pp] === v) delete S.painL[pp]; else S.painL[pp] = v; renderPain(); refresh(); return; }
     if (b.id === 'addWk') { workouts.push({ n: '', kg: '', s: '', r: '' }); renderWk(); return; }
     if (b.id === 'fbSeen') { markFbSeen(); return; }
     if (b.id === 'fbGo') { var hm = $('h-meal'); if (hm && hm.scrollIntoView) hm.scrollIntoView({ block: 'start' }); return; }
@@ -1533,7 +1550,7 @@ body.pre-auth { padding-block: 0 40px; }
     if (!r) f.push(['미체크', 'warn']);
     else {
       if (r.status === 'partial') f.push(['일부만 입력', 'mute']);
-      if (r.pain.length && r.pain.indexOf('없음') < 0) f.push(['통증 ' + r.pain.join('·') + (r.painI ? '(' + r.painI + ')' : ''), r.painI === '강' ? 'bad' : 'warn']);
+      if (r.pain.length && r.pain.indexOf('없음') < 0) f.push(['통증 ' + painStr(r), topLevel(r.painL || {}, r.pain) === '강' ? 'bad' : 'warn']);
       if (r.cond != null && r.cond <= 2) f.push(['컨디션 낮음', 'bad']);
       if (p.valid && p.p < .8) f.push(['단백질 부족', 'warn']);
       if (p.valid && p.k > 1.15) f.push(['칼로리 초과', 'warn']);
@@ -1598,7 +1615,7 @@ body.pre-auth { padding-block: 0 40px; }
         '<span class="who"><b>' + esc(m.name) + '</b><span class="flags">' + (cur && cur.admin ? '<span class="pill mute">' + esc(BRANCH[m.branch] || '') + '</span>' : '') + (m.trainer ? (m.trainer === (cur && cur.acct) ? '' : '<span class="pill mute">담당 ' + esc(trainerName(m.trainer)) + '</span>') : '<span class="pill warn">담당 미지정</span>') + (fl.length ? fl.map(function (f) { return '<span class="pill ' + f[1] + '">' + esc(f[0]) + '</span>'; }).join('') : '<span class="mute" style="font-size:12px">특이사항 없음</span>') + '</span></span>' +
         '<span class="cell" data-l="오늘 기록">' + stPill + (!r && ago != null ? '<small>마지막 ' + (ago === 0 ? '오늘' : ago + '일 전') + '</small>' : '') + '</span>' +
         '<span class="cell" data-l="컨디션">' + dots(r && r.cond, 'cond') + '</span>' +
-        '<span class="cell" data-l="통증">' + (hasPain(m) ? '<b>' + esc(r.pain.join('·')) + '</b>' + (r.painI ? '<small>강도 ' + r.painI + '</small>' : '') : '<span class="mute">' + (r ? '없음' : '–') + '</span>') + '</span>' +
+        '<span class="cell" data-l="통증">' + (hasPain(m) ? '<b>' + esc(painStr(r)) + '</b>' : '<span class="mute">' + (r ? '없음' : '–') + '</span>') + '</span>' +
         '<span class="cell nv" data-l="체중 7일">' + (w.last != null ? '<b>' + w.last.toFixed(1) + 'kg</b><small>' + deltaTxt(w.delta) + '</small>' : '<span class="mute">–</span>') + '</span>' +
         '<span class="cell" data-l="칼로리">' + mini(p.k, p.valid) + '</span>' +
         '<span class="cell" data-l="단백질">' + mini(p.p, p.valid) + '</span>' +
@@ -1717,7 +1734,7 @@ body.pre-auth { padding-block: 0 40px; }
         '<div class="kv"><span>컨디션</span>' + dots(r.cond, 'cond') + '</div>' +
         '<div class="kv"><span>피로도</span>' + dots(r.fatigue, 'fat') + '</div>' +
         '<div class="kv"><span>스트레스</span>' + faceInline(STRESS_FACES, r.stress) + '</div>' +
-        '<div class="kv"><span>통증</span><b>' + (pn ? esc(r.pain.join(', ')) + (r.painI ? ' (' + r.painI + ')' : '') : (r.pain.length ? '없음' : '–')) + '</b></div></div>' +
+        '<div class="kv"><span>통증</span><b>' + (pn ? esc(painStr(r, ', ')) : (r.pain.length ? '없음' : '–')) + '</b></div></div>' +
         '<div class="blk"><h3>오늘 식단 요약 · ' + r.meals.length + '끼</h3>' +
         (r.meals.length ?
           '<div class="kv"><span>합계</span><b>' + n0(r.tot.kcal) + 'kcal · 탄' + n1(r.tot.carb) + ' 단' + n1(r.tot.prot) + ' 지' + n1(r.tot.fat) + '</b></div>' +
@@ -1811,7 +1828,7 @@ body.pre-auth { padding-block: 0 40px; }
         steps: steps == null ? null : Math.round(steps), water: numField('q_water', 0, 20, '물 섭취'),
         muscle: numField('q_muscle', 5, 100, '골격근량'), body_fat: numField('q_bf', 2, 70, '체지방률'),
         trained: nn(S.trained), cond: nn(S.cond), fatigue: nn(S.fatigue), stress: nn(S.stress),
-        pain: S.pain.slice(), pain_level: nn(S.painI),
+        pain: encPain(), pain_level: nn(topLevel(S.painL, S.pain)),
         workouts: S.trained === 'rest' ? [] : workouts.filter(function (w) { return String(w.n).trim(); }).map(function (w) { return { n: String(w.n).slice(0, 40), kg: nn(w.kg), s: nn(w.s), r: nn(w.r) }; }),
         meals: mealsForSave(),
         tot: { kcal: Math.round(res.t.kcal), carb: Math.round(res.t.carb * 10) / 10, prot: Math.round(res.t.prot * 10) / 10, fat: Math.round(res.t.fat * 10) / 10 },
@@ -1851,8 +1868,9 @@ body.pre-auth { padding-block: 0 40px; }
     if (!d || d.date !== todayKey || !(d.at > (serverAt ? Date.parse(serverAt) || 0 : 0))) { clearDraft(); return false; }
     var r5 = function (v) { v = +v; return v >= 1 && v <= 5 ? v : null; }, ds = d.S || {};
     S.trained = ['pt', 'self', 'rest'].indexOf(ds.trained) >= 0 ? ds.trained : null;
-    S.cond = r5(ds.cond); S.fatigue = r5(ds.fatigue); S.stress = r5(ds.stress); S.painI = ['약', '중', '강'].indexOf(ds.painI) >= 0 ? ds.painI : null;
+    S.cond = r5(ds.cond); S.fatigue = r5(ds.fatigue); S.stress = r5(ds.stress); S.painI = null;
     S.pain = (ds.pain || []).filter(function (p) { return PAINS.indexOf(p) >= 0; });
+    S.painL = {}; S.pain.forEach(function (n) { var l = (ds.painL || {})[n] || (n !== '없음' ? ds.painI : null); if (LV.indexOf(l) >= 0 && n !== '없음') S.painL[n] = l; });
     workouts = (d.workouts || []).slice(0, 30).map(function (w) { return { n: String(w.n || '').slice(0, 40), kg: w.kg == null ? '' : w.kg, s: w.s == null ? '' : w.s, r: w.r == null ? '' : w.r }; });
     DRAFT_FIELDS.forEach(function (id) { setField(id, d.f && d.f[id] != null && d.f[id] !== '' ? d.f[id] : ''); });
     (d.meals || []).forEach(function (m, i) {
@@ -1902,7 +1920,7 @@ body.pre-auth { padding-block: 0 40px; }
     }
   }
   function rowToDoc(r) {
-    return { acct: r.member_id, date: r.record_date, at: r.updated_at, status: r.status, weight: r.weight, sleep: r.sleep, steps: r.steps, water: r.water, muscle: r.muscle, bf: r.body_fat, trained: r.trained, workouts: r.workouts || [], cond: r.cond, fatigue: r.fatigue, stress: r.stress, pain: r.pain || [], painI: r.pain_level, goal: r.goal, meals: r.meals || [], tot: r.tot };
+    return { acct: r.member_id, date: r.record_date, at: r.updated_at, status: r.status, weight: r.weight, sleep: r.sleep, steps: r.steps, water: r.water, muscle: r.muscle, bf: r.body_fat, trained: r.trained, workouts: r.workouts || [], cond: r.cond, fatigue: r.fatigue, stress: r.stress, pain: parsePain(r.pain, r.pain_level).names, painL: parsePain(r.pain, r.pain_level).lv, painI: r.pain_level, goal: r.goal, meals: r.meals || [], tot: r.tot };
   }
   function applyRecord(row) {
     var d = rowToDoc(row), mem = memberByAcct(d.acct), idx = keyIdx(d.date);
@@ -2242,12 +2260,12 @@ body.pre-auth { padding-block: 0 40px; }
   }
   function recFromDoc(d) {
     var ms = (d.meals || []).map(function (m) { var its = itemsOf(m), t = sumItems(its); return { slot: m.slot, note: m.note || '', full: m.full >= 1 && m.full <= 5 ? m.full : null, items: its, kcal: t.kcal, carb: t.carb, prot: t.prot, fat: t.fat }; });
-    return { status: d.status, weight: d.weight, sleep: d.sleep, steps: d.steps, water: d.water, muscle: d.muscle, bf: d.bf, trained: d.trained, workouts: d.workouts || [], cond: d.cond, fatigue: d.fatigue, stress: d.stress, pain: d.pain || [], painI: d.painI, meals: ms, tot: d.tot || sumMeals(ms), goal: d.goal && d.goal.kcal ? d.goal : DEFAULT_GOAL };
+    return { status: d.status, weight: d.weight, sleep: d.sleep, steps: d.steps, water: d.water, muscle: d.muscle, bf: d.bf, trained: d.trained, workouts: d.workouts || [], cond: d.cond, fatigue: d.fatigue, stress: d.stress, pain: d.pain || [], painL: d.painL || {}, painI: d.painI, meals: ms, tot: d.tot || sumMeals(ms), goal: d.goal && d.goal.kcal ? d.goal : DEFAULT_GOAL };
   }
   function restoreForm(d) {
     resetMember();
     var n2 = function (v) { return v == null ? null : v; };
-    S.trained = n2(d.trained); S.cond = n2(d.cond); S.fatigue = n2(d.fatigue); S.stress = n2(d.stress); S.pain = (d.pain || []).slice(); S.painI = n2(d.painI);
+    S.trained = n2(d.trained); S.cond = n2(d.cond); S.fatigue = n2(d.fatigue); S.stress = n2(d.stress); S.pain = (d.pain || []).slice(); S.painI = null; S.painL = Object.assign({}, d.painL || {});
     workouts = (d.workouts || []).map(function (w) { return { n: w.n, kg: w.kg, s: w.s, r: w.r }; });
     setField('q_weight', d.weight); setField('q_sleep', d.sleep); setField('q_steps', d.steps); setField('q_water', d.water); setField('q_muscle', d.muscle); setField('q_bf', d.bf);
     if (d.goal && d.goal.kcal) setGoalFields(d.goal);
