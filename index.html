@@ -1047,7 +1047,8 @@ body.pre-auth { padding-block: 0 40px; }
       '<div class="qrow q3">' + inp('cu_c', '탄수화물 (g)', u.c, '0') + inp('cu_p', '단백질 (g)', u.p, '0') + inp('cu_f', '지방 (g)', u.f, '0') + '</div>' +
       '<div class="pk-prev num" id="cuPrev">' + cuPrevHTML() + '</div><p class="hint" id="cuMsg" aria-live="polite"></p>' +
       '<div class="qrow"><button type="button" class="btn primary" data-act="cusave"' + (PK.saving ? ' disabled' : '') + '>저장하고 담기</button><button type="button" class="btn" data-act="cucancel">취소</button></div>' +
-      '<p class="credit" style="margin-top:0">내가 등록한 음식은 나와 담당 트레이너만 볼 수 있어요.</p>';
+      '<label class="consent"><input type="checkbox" id="cu_sh"' + (u.sh === false ? '' : ' checked') + '><span>다른 회원도 검색해서 쓸 수 있게 공유해요. <small>"유저등록"으로 표시되고 등록한 사람은 보이지 않아요. 직원이 확인하고 정리할 수 있어요.</small></span></label>' +
+      '<p class="credit" style="margin-top:0">공유를 끄면 나와 직원만 볼 수 있어요.</p>';
   }
   function cuCode() { var a = new Uint8Array(8); (window.crypto || window.msCrypto).getRandomValues(a); return 'u' + Array.prototype.map.call(a, function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
   async function cuSave() {
@@ -1060,7 +1061,7 @@ body.pre-auth { padding-block: 0 40px; }
     if (!sb || !cur) { say('로그인 상태를 확인해 주세요.'); return; }
     PK.saving = true; say('저장하는 중이에요…');
     var units = Math.abs(v.b - 100) > 0.5 ? [['1회분', v.b]] : [];
-    var row = { code: cuCode(), name: name, category: '내 음식', source: 'U', owner: cur.acct, kcal: v.k, carb: v.c, prot: v.p, fat: v.f, units: units, active: true };
+    var row = { code: cuCode(), name: name, category: '내 음식', source: 'U', owner: cur.acct, kcal: v.k, carb: v.c, prot: v.p, fat: v.f, units: units, active: true, shared: u.sh !== false };
     var r = await sb.from('foods').insert(row);
     PK.saving = false;
     if (r.error) {
@@ -1068,11 +1069,17 @@ body.pre-auth { padding-block: 0 40px; }
       say(/too_many_foods/.test(m) ? '내 음식은 200개까지 등록할 수 있어요. 안 쓰는 음식을 삭제해 주세요.' : /invalid_nutrition/.test(m) ? '영양성분 값이 너무 커요. 표시된 양과 수치를 확인해 주세요.' : '저장하지 못했어요. 잠시 뒤 다시 해 주세요. (오류: ' + m.slice(0, 80) + ')');
       return;
     }
-    var food = { id: row.code, n: name, cat: '내 음식', src: '내 음식', k: v.k, c: v.c, p: v.p, f: v.f, u: units };
+    var food = { id: row.code, n: name, cat: '내 음식', src: '내 음식', sh: row.shared, k: v.k, c: v.c, p: v.p, f: v.f, u: units };
     setFoods(FOODS.concat([food]));
     var idx = PK.i; PK = newPK(); PK.i = idx; PK.fid = food.id; PK.unit = unitsOf(food)[0][0]; PK.qty = PK.unit === 'g' ? '100' : '1';
     renderMeals();
     var qq = $('pkQty'); if (qq) { qq.focus(); qq.select(); }
+  }
+  async function cuShare() {
+    var f = PK.fid ? FOOD[PK.fid] : null; if (!f || f.src !== '내 음식' || !sb) return;
+    var on = !f.sh, r = await sb.from('foods').update({ shared: on }).eq('code', f.id);
+    if (r.error) { var pv = $('pkPrev'); if (pv) pv.textContent = '바꾸지 못했어요. 잠시 뒤 다시 해 주세요.'; return; }
+    f.sh = on; PK.delAsk = false; renderMeals();
   }
   async function cuDelete() {
     var f = PK.fid ? FOOD[PK.fid] : null; if (!f || f.src !== '내 음식') return;
@@ -1097,7 +1104,7 @@ body.pre-auth { padding-block: 0 40px; }
         '<div class="chips" id="pkChips">' + chipsHTML() + '</div>' +
         '<div class="pk-prev num" id="pkPrev">' + prevHTML() + '</div>' +
         '<div class="qrow"><button type="button" class="btn primary" data-act="pkadd">이 끼니에 추가</button><button type="button" class="btn" data-act="pkback">다른 음식 찾기</button></div>' +
-        (f.src === '내 음식' ? '<button type="button" class="btn link sm" data-act="pkdel" style="align-self:flex-start">' + (PK.delAsk ? '한 번 더 누르면 내 음식에서 삭제돼요' : '내 음식에서 삭제') + '</button>' : '');
+        (f.src === '내 음식' ? '<button type="button" class="btn link sm" data-act="pkshare" style="align-self:flex-start">' + (f.sh ? '다른 회원에게 공유 중 · 공유 끄기' : '공유 안 함 · 다른 회원에게 공유하기') + '</button><button type="button" class="btn link sm" data-act="pkdel" style="align-self:flex-start">' + (PK.delAsk ? '한 번 더 누르면 내 음식에서 삭제돼요' : '내 음식에서 삭제') + '</button>' : '');
     }
     return h + '<button type="button" class="btn link sm" data-act="pkclose" style="align-self:flex-start">닫기</button></div>';
   }
@@ -1455,10 +1462,11 @@ body.pre-auth { padding-block: 0 40px; }
     else if (act === 'pkclose') { PK = newPK(); renderMeals(); }
     else if (act === 'pkchip') { PK.qty = b.getAttribute('data-v'); var q2 = $('pkQty'); if (q2) q2.value = PK.qty; $('pkPrev').innerHTML = prevHTML(); $('pkChips').innerHTML = chipsHTML(); }
     else if (act === 'pkpick') { var f = FOOD[b.getAttribute('data-fid')]; if (!f) return; PK.fid = f.id; PK.delAsk = false; PK.unit = unitsOf(f)[0][0]; PK.qty = PK.unit === 'g' ? '100' : '1'; renderMeals(); var qq = $('pkQty'); if (qq) { qq.focus(); qq.select(); } }
-    else if (act === 'pkcustom') { PK.custom = true; PK.cu = { n: PK.q.trim().slice(0, 40), b: '100', k: '', c: '', p: '', f: '' }; renderMeals(); var cf = $(PK.cu.n ? 'cu_k' : 'cu_n'); if (cf) cf.focus(); }
+    else if (act === 'pkcustom') { PK.custom = true; PK.cu = { n: PK.q.trim().slice(0, 40), b: '100', k: '', c: '', p: '', f: '', sh: true }; renderMeals(); var cf = $(PK.cu.n ? 'cu_k' : 'cu_n'); if (cf) cf.focus(); }
     else if (act === 'cucancel') { PK.custom = false; PK.cu = null; renderMeals(); var q3 = $('pkq'); if (q3) q3.focus(); }
     else if (act === 'cusave') { cuSave(); }
     else if (act === 'pkdel') { cuDelete(); }
+    else if (act === 'pkshare') { cuShare(); }
     else if (act === 'pkback') { PK.fid = null; PK.delAsk = false; renderMeals(); var q2 = $('pkq'); if (q2) q2.focus(); }
     else if (act === 'pkadd') {
       var c = pkCalc();
@@ -1479,6 +1487,7 @@ body.pre-auth { padding-block: 0 40px; }
     if (f === 'n' || f === 'kg' || f === 's' || f === 'r') { workouts[+t.closest('.wk-row').getAttribute('data-i')][f] = t.value; return; }
     if (f === 'note') { meals[+t.closest('.meal').getAttribute('data-i')].note = t.value; return; }
     if (f === 'qty') { updItem(+t.closest('.meal').getAttribute('data-i'), +t.closest('.it').getAttribute('data-ii'), t.value, null); return; }
+    if (t.id === 'cu_sh' && PK.cu) { PK.cu.sh = t.checked; return; }
     if (CU_KEYS[t.id] && PK.cu) { PK.cu[CU_KEYS[t.id]] = t.value; var cp = $('cuPrev'); if (cp) cp.innerHTML = cuPrevHTML(); var cm = $('cuMsg'); if (cm) cm.textContent = ''; return; }
     if (t.id === 'pkq') { pkSync(); setTimeout(pkSync, 80); setTimeout(pkSync, 300); return; }
     if (t.id === 'pkQty') { PK.qty = t.value; $('pkPrev').innerHTML = prevHTML(); $('pkChips').innerHTML = chipsHTML(); return; }
@@ -1876,13 +1885,13 @@ body.pre-auth { padding-block: 0 40px; }
     if (!sb) return;
     var all = [], from = 0, page = 1000, r;
     for (;;) {
-      r = await sb.from('foods').select('code,name,category,source,kcal,carb,prot,fat,units').eq('active', true).order('name').range(from, from + page - 1);
+      r = await sb.from('foods').select('code,name,category,source,kcal,carb,prot,fat,units,owner,shared').eq('active', true).order('name').range(from, from + page - 1);
       if (r.error || !r.data) return;
       all = all.concat(r.data); if (r.data.length < page) break; from += page;
     }
     if (!all.length) return;
     setFoods(all.map(function (x) {
-      return { id: x.code, n: x.name, cat: x.category || '기타', src: x.source === 'A' ? '아르더짐' : x.source === 'U' ? '내 음식' : '공공', k: +x.kcal, c: +x.carb, p: +x.prot, f: +x.fat, u: (x.units || []).map(function (u) { return [String(u[0]), +u[1]]; }) };
+      return { id: x.code, n: x.name, cat: x.category || '기타', src: x.source === 'A' ? '아르더짐' : x.source === 'U' ? (cur && x.owner === cur.acct ? '내 음식' : '유저등록') : '공공', sh: !!x.shared, k: +x.kcal, c: +x.carb, p: +x.prot, f: +x.fat, u: (x.units || []).map(function (u) { return [String(u[0]), +u[1]]; }) };
     }));
   }
   async function signPaths(paths) {
