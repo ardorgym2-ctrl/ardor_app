@@ -650,7 +650,7 @@ body.pre-auth { padding-block: 0 40px; }
 <div class="pane" data-pane="cond" hidden>
 <section class="sec" aria-labelledby="h-cond">
     <div class="sec-h"><h2 id="h-cond">오늘 몸 상태</h2><p>지금 상태에 가까운 얼굴을 골라 주세요.</p></div>
-    <div class="q"><div class="q-h"><span>컨디션</span><small>오른쪽일수록 좋아요</small></div><div class="rate" data-k="cond"></div></div>
+    <div class="q"><div class="q-h"><span>컨디션</span><small>왼쪽일수록 좋아요</small></div><div class="rate" data-k="cond"></div></div>
     <div class="q"><div class="q-h"><span>피로도</span><small>오른쪽일수록 피곤해요</small></div><div class="rate" data-k="fatigue"></div></div>
     <div class="q"><div class="q-h"><span>스트레스</span><small>오른쪽일수록 힘들어요</small></div><div class="rate" data-k="stress"></div></div>
     <div class="q"><div class="q-h"><span>아픈 곳이 있나요?</span><small>여러 개 선택할 수 있어요</small></div><div class="chips" id="pain"></div></div>
@@ -908,8 +908,8 @@ body.pre-auth { padding-block: 0 40px; }
   function faceSVG(mouth, eye, drop) {
     return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/>' + EYES[eye || 0] + '<path d="' + MOUTH[mouth] + '" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' + (drop ? '<path d="M19 4.2 q1.6 2.2 0 3.3 q-1.6 -1.1 0 -3.3z" fill="currentColor"/>' : '') + '</svg>';
   }
-  function facesHTML(set, cur, what) {
-    return set.map(function (f, i) { var v = i + 1; return '<button type="button" data-v="' + v + '" aria-pressed="' + (cur === v) + '" aria-label="' + esc(what + ': ' + f[1]) + '">' + faceSVG(f[0], f[3], f[4]) + '<span>' + f[2] + '</span></button>'; }).join('');
+  function facesHTML(set, cur, what, rev) {
+    return set.map(function (f, i) { return [f, i + 1]; }).sort(function (x, y) { return rev ? y[1] - x[1] : 0; }).map(function (z) { var f = z[0], v = z[1]; return '<button type="button" data-v="' + v + '" aria-pressed="' + (cur === v) + '" aria-label="' + esc(what + ': ' + f[1]) + '">' + faceSVG(f[0], f[3], f[4]) + '<span>' + f[2] + '</span></button>'; }).join('');
   }
   function faceInline(set, v) {
     if (v == null || !set[v - 1]) return '<span class="mute">–</span>';
@@ -919,7 +919,7 @@ body.pre-auth { padding-block: 0 40px; }
     document.querySelectorAll('.rate').forEach(function (el) {
       var k = el.getAttribute('data-k');
       var rs = RATE_SETS[k]; if (!rs) return;
-      el.classList.add('faces'); el.innerHTML = facesHTML(rs[0], S[k], rs[1]);
+      el.classList.add('faces'); el.innerHTML = facesHTML(rs[0], S[k], rs[1], k === 'cond');
     });
   }
   var PAINS = ['없음', '목', '어깨', '허리', '무릎', '손목', '발목', '기타'];
