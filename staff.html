@@ -1536,8 +1536,9 @@ body.pre-auth { padding-block: 0 40px; }
     return { id: idx, acct: p.id, name: p.name, loginId: p.login_id, branch: p.branch, trainer: p.trainer_id || null, goal: p.goal && p.goal.kcal ? p.goal : DEFAULT_GOAL, pgoal: p.goal && p.goal.kcal ? p.goal : null, days: [0, 1, 2, 3, 4, 5, 6].map(emptyDay), today: null, recs: {} };
   }
   var members = [];
-  var staffFilter = 'all', selected = null, scopeSel = null, PROF = {};
-  var SCOPES = [['mine', '내 회원', function (m) { return cur && m.trainer === cur.acct; }], ['all', '지점 전체', function () { return true; }], ['none', '담당 미지정', function (m) { return !m.trainer; }]];
+  var staffFilter = 'all', selected = null, scopeSel = null, scopeChosen = false, PROF = {};
+  var SCOPES_ALL = [['mine', '내 회원', function (m) { return cur && m.trainer === cur.acct; }], ['all', '지점 전체', function () { return true; }], ['none', '담당 미지정', function (m) { return !m.trainer; }]];
+  function scopeList() { return SCOPES_ALL.filter(function (x) { return x[0] !== 'all' || (cur && cur.admin); }); }
   function trainerName(id) { var t = id && PROF[id]; return t ? t.name : (id ? '다른 선생님' : ''); }
 
   /* ---------- 직원 화면 계산 ---------- */
@@ -1593,7 +1594,8 @@ body.pre-auth { padding-block: 0 40px; }
   function renderStaffList() {
     var all = members.slice();
     var nt = NO_TRAINER_COL ? '<p class="err">담당 기능을 쓰려면 Supabase에서 add_trainer.sql 을 먼저 실행해 주세요.</p>' : '';
-    if (scopeSel == null) scopeSel = all.some(SCOPES[0][2]) ? 'mine' : 'all';
+    var SCOPES = scopeList();
+    if (scopeSel == null || !scopeChosen || !SCOPES.some(function (x) { return x[0] === scopeSel; })) scopeSel = all.some(SCOPES[0][2]) ? 'mine' : (cur && cur.admin ? 'all' : 'none');
     var sfn = SCOPES.filter(function (x) { return x[0] === scopeSel; })[0][2];
     $('scopes').innerHTML = SCOPES.map(function (x) { return '<button type="button" class="chip" data-sc="' + x[0] + '" aria-pressed="' + (scopeSel === x[0]) + '">' + x[1] + ' ' + all.filter(x[2]).length + '</button>'; }).join('');
     var ms = all.filter(sfn);
@@ -1620,7 +1622,7 @@ body.pre-auth { padding-block: 0 40px; }
         '<span class="cell" data-l="칼로리">' + mini(p.k, p.valid) + '</span>' +
         '<span class="cell" data-l="단백질">' + mini(p.p, p.valid) + '</span>' +
         '<span class="cell nv" data-l="7일 기록"><b>' + rec + '</b><small>/ 7일</small></span></button>';
-    }).join('') : '<p class="empty">' + (scopeSel === 'mine' && !all.some(SCOPES[0][2]) ? '아직 내 회원이 없어요. "지점 전체"나 "담당 미지정"에서 회원을 열어 "내 회원으로 지정"을 눌러 주세요.' : '조건에 맞는 회원이 없어요.') + '</p>');
+    }).join('') : '<p class="empty">' + (scopeSel === 'mine' && !all.some(SCOPES[0][2]) ? '아직 내 회원이 없어요. "담당 미지정"에서 회원을 열어 "내 회원으로 지정"을 눌러 주세요.' : '조건에 맞는 회원이 없어요.') + '</p>');
   }
 
   /* ---------- 차트 ---------- */
@@ -1754,7 +1756,7 @@ body.pre-auth { padding-block: 0 40px; }
     $('staffList').hidden = selected != null; $('staffDetail').hidden = selected == null;
     if (selected == null) renderStaffList(); else renderDetail(members[selected]);
   }
-  $('scopes').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { scopeSel = b.getAttribute('data-sc'); renderStaffList(); } });
+  $('scopes').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { scopeSel = b.getAttribute('data-sc'); scopeChosen = true; renderStaffList(); } });
   $('filters').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { staffFilter = b.getAttribute('data-f'); renderStaffList(); } });
   $('rows').addEventListener('click', function (e) { var b = e.target.closest('.row'); if (b) { selected = +b.getAttribute('data-id'); selDate = todayKey; fbNote = ''; renderStaff(); window.scrollTo(0, 0); } });
   $('staffDetail').addEventListener('click', function (e) {
