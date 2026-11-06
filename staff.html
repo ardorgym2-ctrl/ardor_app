@@ -599,6 +599,7 @@ body.pre-auth { padding-block: 0 40px; }
   </section>
 
   <div class="fb-banner" id="fbBanner" hidden></div>
+  <section id="fbPast" class="blk" hidden aria-label="지난 식단 피드백"></section>
 
       <section class="sec dash" aria-labelledby="h-dash">
     <div class="sec-h"><h2 id="h-dash">내 변화</h2><p>기록이 쌓일수록 정확해져요.</p></div>
@@ -2046,11 +2047,18 @@ body.pre-auth { padding-block: 0 40px; }
       m.photos = saved.concat(local);
     });
   }
-  function myFb() { return Object.keys(FBK).map(function (k) { return FBK[k]; }).filter(function (f) { return cur && f.acct === cur.acct && f.date === todayKey; }); }
+  function myFb() { return Object.keys(FBK).map(function (k) { return FBK[k]; }).filter(function (f) { return cur && f.acct === cur.acct; }); }
   function renderFbBanner() {
     var el = $('fbBanner');
     if (!cur || cur.role !== 'member') { el.hidden = true; return; }
     var sn = seenAt(), n = myFb().filter(function (f) { return f.at > sn; }).length;
+    var past = myFb().filter(function (f) { return f.date !== todayKey; }).sort(function (a, b) { return a.at < b.at ? 1 : -1; }), pe = $('fbPast');
+    if (pe) {
+      pe.hidden = !past.length;
+      pe.innerHTML = past.length ? '<h3 class="sec-t" style="margin:0 0 6px">지난 식단 피드백</h3>' + past.map(function (f) {
+        var dp = f.date.split('-'); return '<div class="fb"><span><b>' + (+dp[1]) + '/' + (+dp[2]) + ' ' + esc(f.slot) + '</b>' + (f.at > sn ? ' <span class="pill warn">새 글</span>' : '') + '</span><span>' + esc(f.text) + '</span><small>' + esc(f.by) + ' · ' + esc(timeTxt(f.at)) + '</small></div>';
+      }).join('') : '';
+    }
     el.hidden = n === 0;
     if (n) el.innerHTML = '<span><b>트레이너 피드백 ' + n + '건</b>이 새로 왔어요.</span><span class="acts"><button type="button" class="btn sm" id="fbGo">식단 보기</button><button type="button" class="btn sm" id="fbSeen">확인했어요</button></span>';
   }
@@ -2071,9 +2079,9 @@ body.pre-auth { padding-block: 0 40px; }
     if (!text) { say('내용을 입력해 주세요.'); return; }
     if (!sb || !m) { say('이 회원에게는 피드백을 보낼 수 없어요.'); return; }
     var r = await sb.from('feedback').insert({ member_id: m.acct, record_date: selDate, slot: slot, text: text.slice(0, 500) });
-    if (r.error) { say('보내지 못했어요. 오늘 기록에만 남길 수 있어요. 잠시 뒤 다시 눌러 주세요.'); return; }
+    if (r.error) { say('보내지 못했어요. 최근 7일 기록에만 남길 수 있어요. 잠시 뒤 다시 눌러 주세요.'); return; }
     if (input) input.value = '';
-    say('피드백을 보냈어요. 회원의 오늘 화면에 새 글로 표시돼요.'); scheduleReload();
+    say(selDate === todayKey ? '피드백을 보냈어요. 회원의 오늘 화면에 새 글로 표시돼요.' : '피드백을 보냈어요. 회원 화면의 "지난 식단 피드백"에 표시돼요.'); scheduleReload();
   }
   function mealsSection(m) {
     var anyOther = Object.keys(m.recs).length > 0;
@@ -2081,7 +2089,7 @@ body.pre-auth { padding-block: 0 40px; }
     var h = '<h2 class="sec-t">식단 기록</h2><div class="filters" style="margin:10px 0">' + chips + '</div>';
     var rec = m.recs[selDate];
     if (!rec || !rec.meals.length) return h + '<div class="blk"><p class="empty">이 날 올라온 식단이 없어요.' + (anyOther ? ' 점이 있는 날짜를 눌러 보세요.' : '') + '</p></div>';
-    var canFb = !!m.acct && selDate === todayKey;
+    var canFb = !!m.acct;
     h += '<div class="blocks">' + rec.meals.map(function (ml, mi) {
       var ph = Object.keys(PH).map(function (k) { return PH[k]; }).filter(function (p) { return m.acct && p.acct === m.acct && p.date === selDate && p.slot === ml.slot; }).sort(function (a, b) { return a.at < b.at ? -1 : 1; });
       var fbs = m.acct ? fbList(m.acct, selDate, ml.slot) : [];
@@ -2095,7 +2103,7 @@ body.pre-auth { padding-block: 0 40px; }
         (canFb ? '<div class="inv-row"><input class="txt" id="fbi' + mi + '" type="text" maxlength="500" placeholder="이 끼니에 피드백 남기기" aria-label="' + esc(ml.slot) + ' 피드백"><button type="button" class="btn sm primary" data-fbsend="' + esc(ml.slot) + '" data-fbidx="' + mi + '">보내기</button></div>' : '') + '</div>';
     }).join('') + '</div>';
     h += '<p class="hint" id="fbMsg" aria-live="polite">' + esc(fbNote) + '</p>';
-    if (selDate !== todayKey) h += '<p class="hint">피드백은 오늘 기록에만 남길 수 있어요.</p>';
+    if (selDate !== todayKey) h += '<p class="hint">지난 식단에도 피드백을 남길 수 있어요. 회원 화면의 "지난 식단 피드백"에 날짜와 함께 표시돼요.</p>';
     return h;
   }
 
