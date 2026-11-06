@@ -588,10 +588,11 @@ body.pre-auth { padding-block: 0 40px; }
 </main>
 
 <main id="memberView" class="wrap" hidden>
+  <div id="dayBarWrap"><div class="filters" id="histBar" style="margin:10px 0 4px" aria-label="기록할 날짜 선택"></div><p class="hint" id="dayNote" hidden></p></div>
   <div class="pane" data-pane="home">
 <section class="hello">
     <p class="eyebrow" id="todayLabel"></p>
-    <h1><span id="memberName"></span> 님, 오늘 체크</h1>
+    <h1><span id="memberName"></span> 님, <span id="dayTitle">오늘</span> 체크</h1>
     <div class="prog">
       <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="11" id="progBar"><i id="progFill" class="good" style="width:0"></i></div>
       <div class="prog-t"><span id="progText"></span><span><b id="progNum">0</b> / 11</span></div>
@@ -874,7 +875,33 @@ body.pre-auth { padding-block: 0 40px; }
     ['q_weight', 'q_sleep', 'q_steps', 'q_water', 'q_muscle', 'q_bf', 'g_sw', 'g_tw'].forEach(function (id) { setField(id, ''); });
     HIST = [];
   }
-  function renderAll() { renderTrained(); renderRates(); renderPain(); renderWk(); renderMeals(); refresh(); }
+  function renderAll() { renderTrained(); renderRates(); renderPain(); renderWk(); renderMeals(); refresh(); renderDayBar(); }
+  /* 날짜 선택: 오늘 + 지난 6일은 같은 화면에서 이어서 쓰고 고칠 수 있다 */
+  var formDate = todayKey;
+  function dayLabel(k) { var d = days7.filter(function (x) { return x.k === k; })[0]; return k === todayKey || !d ? '오늘' : d.m + '/' + d.d + '(' + d.w + ')'; }
+  function renderDayBar() {
+    var bar = $('histBar'), note = $('dayNote'), me = curMember();
+    if (!bar) return;
+    if (!cur || cur.role !== 'member' || !me) { bar.innerHTML = ''; note.hidden = true; return; }
+    bar.innerHTML = '<button type="button" class="chip" data-hd="' + todayKey + '" aria-pressed="' + (formDate === todayKey) + '">오늘</button>' + days7.slice(0, 6).reverse().map(function (d) {
+      return '<button type="button" class="chip" data-hd="' + d.k + '" aria-pressed="' + (formDate === d.k) + '">' + d.m + '/' + d.d + '(' + d.w + ')' + (me.recs[d.k] ? '<span class="dotm" role="img" aria-label="기록 있음"></span>' : '') + '</button>';
+    }).join('');
+    var past = formDate !== todayKey, lb = dayLabel(formDate);
+    note.hidden = !past; if (past) note.textContent = lb + ' 기록을 ' + (me.recs[formDate] ? '고치는' : '새로 쓰는') + ' 중이에요. 제출하면 이 날 기록이 저장돼요.';
+    $('dayTitle').textContent = lb; $('h-sub').textContent = lb + ' 기록 제출'; $('submitBtn').textContent = lb + ' 기록 제출';
+  }
+  function switchDay(d) {
+    if (!cur || cur.role !== 'member' || saving || d === formDate) return;
+    var me = curMember(); if (!me) return;
+    if (formDate === todayKey) saveDraft();
+    formDate = d; $('subDone').hidden = true; $('subErr').hidden = true;
+    var doc = me.docs && me.docs[d];
+    if (doc) restoreForm(doc);
+    else { resetMember(); if (me.pgoal) setGoalFields(me.pgoal); mergePhotos(); renderAll(); renderFbBanner(); }
+    if (d === todayKey) applyDraft(doc ? doc.at : null);
+    renderDayBar(); window.scrollTo(0, 0);
+  }
+  $('histBar').addEventListener('click', function (e) { var b = e.target.closest('[data-hd]'); if (!b) return; e.stopPropagation(); switchDay(b.getAttribute('data-hd')); });
 
   function getGoal() {
     var v = function (id, d) { var x = parseFloat($(id).value); return isFinite(x) && x > 0 ? x : d; };
@@ -1134,7 +1161,7 @@ body.pre-auth { padding-block: 0 40px; }
   function fbHTML(slot) {
     if (!cur || cur.role !== 'member') return '';
     var sn = seenAt();
-    return fbList(cur.acct, todayKey, slot).map(function (f) {
+    return fbList(cur.acct, formDate, slot).map(function (f) {
       return '<div class="fb"><span><b>트레이너 피드백</b>' + (f.at > sn ? ' <span class="pill warn">새 글</span>' : '') + '</span><span>' + esc(f.text) + '</span><small>' + esc(f.by) + ' · ' + esc(timeTxt(f.at)) + '</small></div>';
     }).join('');
   }
@@ -1262,6 +1289,7 @@ body.pre-auth { padding-block: 0 40px; }
     if (!TABS[t] && t !== 'settings') t = 'home';
     Array.prototype.forEach.call(document.querySelectorAll('#memberView .pane'), function (el) { el.hidden = el.getAttribute('data-pane') !== t; });
     Array.prototype.forEach.call($('tabbar').querySelectorAll('button'), function (b) { if (b.getAttribute('data-tab') === t) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    var dbw = $('dayBarWrap'); if (dbw) dbw.hidden = t === 'settings';
     window.scrollTo(0, 0);
   }
   $('setBtn').addEventListener('click', function () { renderSettings(); showTab('settings'); });
@@ -1471,7 +1499,7 @@ body.pre-auth { padding-block: 0 40px; }
     if (par.classList.contains('pi')) { var pp = par.parentElement.getAttribute('data-p'); if (S.painL[pp] === v) delete S.painL[pp]; else S.painL[pp] = v; renderPain(); refresh(); return; }
     if (b.id === 'addWk') { workouts.push({ n: '', kg: '', s: '', r: '' }); renderWk(); return; }
     if (b.id === 'fbSeen') { markFbSeen(); return; }
-    if (b.id === 'fbGo') { var hm = $('h-meal'); if (hm && hm.scrollIntoView) hm.scrollIntoView({ block: 'start' }); return; }
+    if (b.id === 'fbGo') { if (myFb().some(function (f) { return f.date === todayKey; })) showTab('meal'); else { var pe = $('fbPast'); if (pe && !pe.hidden && pe.scrollIntoView) pe.scrollIntoView({ block: 'start', behavior: 'smooth' }); } return; }
     var act = b.getAttribute('data-act');
     if (act === 'rmwk') { workouts.splice(+b.parentElement.getAttribute('data-i'), 1); renderWk(); return; }
     var card = b.closest('.meal'); if (!card) return;
@@ -1792,10 +1820,10 @@ body.pre-auth { padding-block: 0 40px; }
         p = meals[mi].photos[pi]; if (p.saved) continue;
         var blob = dataUrlToBlob(p.img);
         if (!blob || blob.type !== 'image/jpeg') { failed++; continue; }
-        var path = cur.acct + '/' + todayKey + '/' + mi + '_' + rndToken() + '.jpg';
+        var path = cur.acct + '/' + formDate + '/' + mi + '_' + rndToken() + '.jpg';
         var up = await bucket.upload(path, blob, { contentType: 'image/jpeg', upsert: false });
         if (up.error) { failed++; continue; }
-        var ins = await sb.from('meal_photos').insert({ member_id: cur.acct, record_date: todayKey, slot: meals[mi].slot, path: path }).select('id').single();
+        var ins = await sb.from('meal_photos').insert({ member_id: cur.acct, record_date: formDate, slot: meals[mi].slot, path: path }).select('id').single();
         if (ins.error) { await bucket.remove([path]); failed++; continue; }
         p.saved = true; p.id = ins.data.id; p.path = path;
       }
@@ -1825,7 +1853,7 @@ body.pre-auth { padding-block: 0 40px; }
     try {
       var steps = numField('q_steps', 0, 100000, '걸음 수');
       row = {
-        member_id: cur.acct, record_date: todayKey,
+        member_id: cur.acct, record_date: formDate,
         status: pr.done === pr.total ? 'done' : 'partial', goal: g,
         weight: numField('q_weight', 20, 400, '체중'), sleep: numField('q_sleep', 0, 24, '수면 시간'),
         steps: steps == null ? null : Math.round(steps), water: numField('q_water', 0, 20, '물 섭취'),
@@ -1839,14 +1867,14 @@ body.pre-auth { padding-block: 0 40px; }
       };
     } catch (err) { showSubErr(err.message); return; }
     $('subErr').hidden = true; saving = true; $('submitBtn').disabled = true;
-    var base = '제출했어요. (' + pr.done + '/' + pr.total + '개 항목)';
+    var base = (formDate === todayKey ? '' : dayLabel(formDate) + ' 기록을 ') + '제출했어요. (' + pr.done + '/' + pr.total + '개 항목)';
     try {
       var up = await sb.from('daily_records').upsert(row, { onConflict: 'member_id,record_date' });
       if (up.error) throw up.error;
-      sb.from('profiles').update({ goal: g }).eq('id', cur.acct).then(function () { });
+      if (formDate === todayKey) sb.from('profiles').update({ goal: g }).eq('id', cur.acct).then(function () { });
       var failed = await savePhotos();
       $('subDoneText').textContent = failed ? base + ' 다만 사진 ' + failed + '장은 저장하지 못했어요. 다시 제출해 주세요.' : base + ' 담당 트레이너가 확인해요.';
-      $('subDone').hidden = false; clearDraft(); scheduleReload();
+      $('subDone').hidden = false; if (formDate === todayKey) clearDraft(); scheduleReload();
     } catch (err) {
       $('subDoneText').textContent = '저장에 실패했어요. 인터넷 연결을 확인하고 다시 제출해 주세요.'; $('subDone').hidden = false;
     }
@@ -1896,13 +1924,13 @@ body.pre-auth { padding-block: 0 40px; }
   }
   function saveDraft() {
     clearTimeout(draftTimer); draftTimer = null;
-    var k = draftKey(); if (!k || cur.role !== 'member' || !formReady) return;
+    var k = draftKey(); if (!k || cur.role !== 'member' || !formReady || formDate !== todayKey) return;
     var f = {}; DRAFT_FIELDS.forEach(function (id) { f[id] = $(id).value; });
     photoDraftSave(k);
     lsSet(k, JSON.stringify({ date: todayKey, at: Date.now(), f: f, S: S, workouts: workouts, meals: meals.map(function (m) { return { items: m.items, note: m.note, full: m.full }; }) }));
   }
   function clearDraft() { clearTimeout(draftTimer); draftTimer = null; var k = draftKey(); if (k) { try { localStorage.removeItem(k); } catch (e) { } idbRun('readwrite', function (st) { return st.delete(k); }); } }
-  function scheduleDraft() { if (!cur || cur.role !== 'member' || !formReady) return; clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 500); }
+  function scheduleDraft() { if (!cur || cur.role !== 'member' || !formReady || formDate !== todayKey) return; clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 500); }
   function applyDraft(serverAt) {
     var k = draftKey(), raw = k && lsGet(k), d; if (!raw) return false;
     try { d = JSON.parse(raw); } catch (e) { clearDraft(); return false; }
@@ -1966,7 +1994,7 @@ body.pre-auth { padding-block: 0 40px; }
   function applyRecord(row) {
     var d = rowToDoc(row), mem = memberByAcct(d.acct), idx = keyIdx(d.date);
     if (!mem || idx < 0) return;
-    var rec = recFromDoc(d); mem.days[idx] = dayFromRec(rec); mem.recs[d.date] = rec;
+    var rec = recFromDoc(d); mem.days[idx] = dayFromRec(rec); mem.recs[d.date] = rec; (mem.docs = mem.docs || {})[d.date] = d;
     if (idx === 6) {
       mem.today = rec; if (d.goal && d.goal.kcal) mem.goal = d.goal;
       if (cur && cur.role === 'member' && cur.acct === d.acct && !formReady) { formReady = true; restoreForm(d); applyDraft(d.at); }
@@ -2013,7 +2041,7 @@ body.pre-auth { padding-block: 0 40px; }
         if (selected == null) renderStaff(); else safeDetail();
       } else {
         HIST = (rs[4].data || []).map(function (r) { return { k: r.record_date, w: r.weight == null ? null : +r.weight, mu: r.muscle == null ? null : +r.muscle, bf: r.body_fat == null ? null : +r.body_fat, kcal: r.tot && r.tot.kcal != null ? +r.tot.kcal : null }; });
-        mergePhotos(); softRenderMeals(); renderFbBanner(); renderDash();
+        mergePhotos(); softRenderMeals(); renderFbBanner(); renderDayBar(); renderDash();
       }
     } catch (e) {
       if (cur && cur.role === 'member') $('saveState').textContent = '데이터를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.';
@@ -2043,7 +2071,7 @@ body.pre-auth { padding-block: 0 40px; }
     var all = Object.keys(PH).map(function (k) { return PH[k]; });
     meals.forEach(function (m) {
       var local = m.photos.filter(function (p) { return !p.saved; });
-      var saved = all.filter(function (p) { return p.acct === cur.acct && p.date === todayKey && p.slot === m.slot && removedPhotos.indexOf(p.id) < 0; }).sort(function (a, b) { return a.at < b.at ? -1 : 1; }).map(function (p) { return { id: p.id, img: p.img, saved: true, path: p.path }; });
+      var saved = all.filter(function (p) { return p.acct === cur.acct && p.date === formDate && p.slot === m.slot && removedPhotos.indexOf(p.id) < 0; }).sort(function (a, b) { return a.at < b.at ? -1 : 1; }).map(function (p) { return { id: p.id, img: p.img, saved: true, path: p.path }; });
       m.photos = saved.concat(local);
     });
   }
@@ -2118,7 +2146,7 @@ body.pre-auth { padding-block: 0 40px; }
   }
   async function enter(p) {
     cur = { acct: p.id, role: p.role === 'member' ? 'member' : 'staff', admin: p.role === 'admin', name: p.name, branch: p.branch, loginId: p.login_id };
-    members = []; selected = null; formReady = false; goalApplied = false; PH = {}; FBK = {}; INV = {}; INTAKE = {}; URLC = {};
+    formDate = todayKey; members = []; selected = null; formReady = false; goalApplied = false; PH = {}; FBK = {}; INV = {}; INTAKE = {}; URLC = {};
     $('acctName').textContent = cur.name + (cur.role === 'member' ? '' : p.role === 'admin' ? ' 관리자' : ' 직원');
     await loadFoods();
     if (cur.role === 'member') {
@@ -2153,7 +2181,7 @@ body.pre-auth { padding-block: 0 40px; }
     await enter(r.data); return true;
   }
   async function leave(fromEvent) {
-    unsubscribeRealtime(); var was = cur; cur = null; members = []; formReady = false; goalApplied = false; PH = {}; FBK = {}; INV = {}; INTAKE = {}; URLC = {};
+    unsubscribeRealtime(); var was = cur; cur = null; formDate = todayKey; members = []; formReady = false; goalApplied = false; PH = {}; FBK = {}; INV = {}; INTAKE = {}; URLC = {};
     if (was && !fromEvent && sb) { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { } }
     try { var li = localStorage.getItem('ardor_lastid'); if (li) $('l_id').value = li; } catch (e) { }
     $('l_pw').value = ''; $('loginErr').hidden = true; $('fbBanner').hidden = true; $('lb').hidden = true; route();
@@ -2323,7 +2351,7 @@ body.pre-auth { padding-block: 0 40px; }
     });
     mergePhotos();
     renderAll(); renderFbBanner();
-    $('subDoneText').textContent = '오늘 제출한 기록을 불러왔어요. 고친 뒤 다시 제출하면 덮어써요.'; $('subDone').hidden = false;
+    $('subDoneText').textContent = (formDate === todayKey ? '오늘' : dayLabel(formDate)) + ' 제출한 기록을 불러왔어요. 고친 뒤 다시 제출하면 덮어써요.'; $('subDone').hidden = false;
   }
   /* ---------- 가입 시 초기 파악 질문 ---------- */
   var IK = [
