@@ -611,7 +611,7 @@ body.pre-auth { padding-block: 0 40px; }
   </section>
 <section class="sec" aria-labelledby="h-sub">
     <div class="sec-h"><h2 id="h-sub">오늘 기록 제출</h2></div>
-    <p class="hint" id="saveState">작성 중인 내용은 이 기기에 임시로 남아요. 제출해야 트레이너에게 전달되고, 식단 사진은 제출해야 저장돼요.</p>
+    <p class="hint" id="saveState">작성 중인 내용은 이 기기에 임시로 남아요. 제출해야 트레이너에게 전달돼요. 식단 사진도 이 기기에 같이 남아요.</p>
     <label class="consent"><input type="checkbox" id="consent"><span>체중, 통증, 식단 사진 같은 건강 정보를 아르더짐이 코칭 목적으로 수집하고 이용하는 데 동의해요.</span></label>
     <p class="err" id="subErr" hidden>동의에 체크해야 제출할 수 있어요.</p>
     <button class="btn primary" id="submitBtn" type="button">오늘 기록 제출</button>
@@ -1522,7 +1522,7 @@ body.pre-auth { padding-block: 0 40px; }
       var m = meals[+t.closest('.meal').getAttribute('data-i')], room = 4 - m.photos.length, fl = Array.prototype.slice.call(t.files, 0, Math.max(0, room)), left = fl.length;
       t.value = '';
       if (!left) return;
-      fl.forEach(function (file) { readImage(file, function (url) { if (url) m.photos.push({ id: 'n' + rndToken(), img: url, saved: false }); left--; if (left === 0) renderMeals(); }); });
+      fl.forEach(function (file) { readImage(file, function (url) { if (url) m.photos.push({ id: 'n' + rndToken(), img: url, saved: false }); left--; if (left === 0) { renderMeals(); scheduleDraft(); } }); });
     }
   });
 
@@ -1856,13 +1856,51 @@ body.pre-auth { padding-block: 0 40px; }
   /* ---------- 작성 중 임시 저장 (이 기기에만 보관, 제출하면 지움) ---------- */
   var draftTimer = null, DRAFT_FIELDS = ['q_weight', 'q_sleep', 'q_steps', 'q_water', 'q_muscle', 'q_bf'];
   var draftKey = function () { return cur ? 'ardor_draft_' + cur.acct : null; };
+  /* 사진은 용량이 커서 localStorage 대신 IndexedDB 에 임시 보관한다 (이 기기, 오늘만) */
+  function idbRun(mode, fn) {
+    return new Promise(function (res) {
+      try {
+        var rq = indexedDB.open('ardor-draft', 1);
+        rq.onupgradeneeded = function () { rq.result.createObjectStore('p'); };
+        rq.onerror = function () { res(null); };
+        rq.onsuccess = function () {
+          try {
+            var db = rq.result, tx = db.transaction('p', mode), st = tx.objectStore('p'), out = fn(st);
+            tx.oncomplete = function () { res(out && 'result' in out ? out.result : true); db.close(); };
+            tx.onerror = tx.onabort = function () { res(null); try { db.close(); } catch (e) { } };
+          } catch (e) { res(null); }
+        };
+      } catch (e) { res(null); }
+    });
+  }
+  function photoDraftSave(k) {
+    var list = meals.map(function (m) { return m.photos.filter(function (p) { return !p.saved; }).map(function (p) { return { id: p.id, img: p.img }; }); });
+    if (list.some(function (a) { return a.length; })) idbRun('readwrite', function (st) { return st.put({ date: todayKey, photos: list }, k); });
+    else idbRun('readwrite', function (st) { return st.delete(k); });
+  }
+  function photoDraftLoad(k) {
+    idbRun('readonly', function (st) { return st.get(k); }).then(function (d) {
+      if (!d || typeof d !== 'object' || d.date !== todayKey || !d.photos) return;
+      var added = 0;
+      d.photos.forEach(function (arr, i) {
+        if (!meals[i] || !Array.isArray(arr)) return;
+        arr.forEach(function (p) {
+          if (!p || typeof p.img !== 'string' || p.img.indexOf('data:image/') !== 0 || meals[i].photos.length >= 4) return;
+          if (meals[i].photos.some(function (q) { return q.id === p.id; })) return;
+          meals[i].photos.push({ id: String(p.id || ('n' + rndToken())), img: p.img, saved: false }); added++;
+        });
+      });
+      if (added) renderMeals();
+    });
+  }
   function saveDraft() {
     clearTimeout(draftTimer); draftTimer = null;
     var k = draftKey(); if (!k || cur.role !== 'member' || !formReady) return;
     var f = {}; DRAFT_FIELDS.forEach(function (id) { f[id] = $(id).value; });
+    photoDraftSave(k);
     lsSet(k, JSON.stringify({ date: todayKey, at: Date.now(), f: f, S: S, workouts: workouts, meals: meals.map(function (m) { return { items: m.items, note: m.note, full: m.full }; }) }));
   }
-  function clearDraft() { clearTimeout(draftTimer); draftTimer = null; var k = draftKey(); if (k) { try { localStorage.removeItem(k); } catch (e) { } } }
+  function clearDraft() { clearTimeout(draftTimer); draftTimer = null; var k = draftKey(); if (k) { try { localStorage.removeItem(k); } catch (e) { } idbRun('readwrite', function (st) { return st.delete(k); }); } }
   function scheduleDraft() { if (!cur || cur.role !== 'member' || !formReady) return; clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 500); }
   function applyDraft(serverAt) {
     var k = draftKey(), raw = k && lsGet(k), d; if (!raw) return false;
@@ -1880,7 +1918,7 @@ body.pre-auth { padding-block: 0 40px; }
       meals[i].items = (m.items || []).filter(function (it) { return it && typeof it.name === 'string'; });
       meals[i].note = String(m.note || '').slice(0, 200); meals[i].full = r5(m.full);
     });
-    renderAll();
+    renderAll(); photoDraftLoad(k);
     $('subDoneText').textContent = '작성 중이던 내용을 불러왔어요. 아직 제출하지 않았어요.'; $('subDone').hidden = false;
     return true;
   }
