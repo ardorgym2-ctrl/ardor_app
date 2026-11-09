@@ -416,9 +416,9 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 #lb { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .82); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; }
 #lb img { max-width: 100%; max-height: 80vh; border-radius: 8px; }
 .dstrip { display: flex; align-items: center; gap: 4px; margin: 8px 0 0; }
-.dscroll { flex: 1; display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 4px 0; -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); }
+.dscroll { position: relative; flex: 1; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 4px calc(50% - 48px); scroll-behavior: smooth; -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); }
 .dscroll::-webkit-scrollbar { display: none; }
-.dsi { flex: 0 0 33.333%; scroll-snap-align: center; border: 0; background: none; font: inherit; color: var(--ink); text-align: center; padding: 8px 0; cursor: pointer; opacity: .35; font-size: 15px; font-weight: 600; transition: opacity .15s; }
+.dsi { flex: 0 0 96px; scroll-snap-align: center; border: 0; background: none; font: inherit; color: var(--ink); text-align: center; padding: 8px 0; cursor: pointer; opacity: .35; font-size: 15px; font-weight: 600; transition: opacity .15s; }
 .dsi[aria-pressed="true"] { opacity: 1; font-size: 18px; font-weight: 800; }
 .dsi .tdy { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: var(--ink); color: var(--bg); font-size: 12px; font-weight: 700; vertical-align: middle; }
 .dsi:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 10px; }
@@ -896,6 +896,7 @@ body.pre-auth { padding-block: 0 40px; }
     var bar = $('histBar'), note = $('dayNote'), me = curMember();
     if (!bar) return;
     if (!cur || cur.role !== 'member' || !me) { bar.innerHTML = ''; note.hidden = true; return; }
+    var prevL = bar.scrollLeft;
     bar.innerHTML = days7.map(function (d) {
       var on = formDate === d.k;
       return '<button type="button" class="dsi" data-hd="' + d.k + '" aria-pressed="' + on + '">' + d.m + '.' + d.d + ' ' + d.w + (d.k === todayKey ? '<span class="tdy">오늘</span>' : '') + (me.recs[d.k] && d.k !== todayKey ? '<span class="dotm" role="img" aria-label="기록 있음"></span>' : '') + '</button>';
@@ -903,7 +904,7 @@ body.pre-auth { padding-block: 0 40px; }
     var ix = days7.map(function (d) { return d.k; }).indexOf(formDate);
     $('dPrev').disabled = ix <= 0; $('dNext').disabled = ix >= days7.length - 1;
     var sel = bar.querySelector('[aria-pressed="true"]');
-    if (sel) { var tgt = sel.offsetLeft - (bar.clientWidth - sel.offsetWidth) / 2; bar.scrollLeft = tgt; }
+    if (sel) { var tgt = sel.offsetLeft - (bar.clientWidth - sel.offsetWidth) / 2; bar.style.scrollBehavior = 'auto'; bar.scrollLeft = prevL; bar.style.scrollBehavior = ''; if (bar.scrollTo) bar.scrollTo({ left: tgt, behavior: 'smooth' }); else bar.scrollLeft = tgt; }
     updDaySum();
     var past = formDate !== todayKey, lb = dayLabel(formDate);
     note.hidden = !past; if (past) note.textContent = lb + ' 기록을 ' + (me.recs[formDate] ? '고치는' : '새로 쓰는') + ' 중이에요. 제출하면 이 날 기록이 저장돼요.';
