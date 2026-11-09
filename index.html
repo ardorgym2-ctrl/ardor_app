@@ -415,6 +415,18 @@ body.has-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .fb-banner .acts { display: flex; gap: 6px; }
 #lb { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .82); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; }
 #lb img { max-width: 100%; max-height: 80vh; border-radius: 8px; }
+.dstrip { display: flex; align-items: center; gap: 4px; margin: 8px 0 0; }
+.dscroll { flex: 1; display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 4px 0; -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); }
+.dscroll::-webkit-scrollbar { display: none; }
+.dsi { flex: 0 0 33.333%; scroll-snap-align: center; border: 0; background: none; font: inherit; color: var(--ink); text-align: center; padding: 8px 0; cursor: pointer; opacity: .35; font-size: 15px; font-weight: 600; transition: opacity .15s; }
+.dsi[aria-pressed="true"] { opacity: 1; font-size: 18px; font-weight: 800; }
+.dsi .tdy { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: var(--ink); color: var(--bg); font-size: 12px; font-weight: 700; vertical-align: middle; }
+.dsi:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 10px; }
+.dnav { flex: 0 0 34px; height: 34px; border: 0; background: none; color: var(--ink-2); font-size: 26px; line-height: 1; cursor: pointer; border-radius: 50%; }
+.dnav:disabled { opacity: .25; cursor: default; }
+.dnav:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dsum { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; margin: 2px 0 10px; font-size: 13px; color: var(--ink-2); }
+.dsum b { color: var(--ink); font-size: 15px; }
 .dotm { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: 5px; vertical-align: middle; }
 
 /* ===== 브랜드 스타일(아르더짐): 크림 바탕 · 브라운 포인트 · 명조 제목 ===== */
@@ -588,7 +600,8 @@ body.pre-auth { padding-block: 0 40px; }
 </main>
 
 <main id="memberView" class="wrap" hidden>
-  <div id="dayBarWrap"><div class="filters" id="histBar" style="margin:10px 0 4px" aria-label="기록할 날짜 선택"></div><p class="hint" id="dayNote" hidden></p></div>
+  <div id="dayBarWrap"><div class="dstrip" aria-label="기록할 날짜 선택"><button type="button" class="dnav" id="dPrev" aria-label="이전 날">‹</button><div class="dscroll" id="histBar"></div><button type="button" class="dnav" id="dNext" aria-label="다음 날">›</button></div>
+    <div class="dsum" id="daySum" aria-live="polite"></div><p class="hint" id="dayNote" hidden></p></div>
   <div class="pane" data-pane="home">
 <section class="hello">
     <p class="eyebrow" id="todayLabel"></p>
@@ -883,13 +896,29 @@ body.pre-auth { padding-block: 0 40px; }
     var bar = $('histBar'), note = $('dayNote'), me = curMember();
     if (!bar) return;
     if (!cur || cur.role !== 'member' || !me) { bar.innerHTML = ''; note.hidden = true; return; }
-    bar.innerHTML = '<button type="button" class="chip" data-hd="' + todayKey + '" aria-pressed="' + (formDate === todayKey) + '">오늘</button>' + days7.slice(0, 6).reverse().map(function (d) {
-      return '<button type="button" class="chip" data-hd="' + d.k + '" aria-pressed="' + (formDate === d.k) + '">' + d.m + '/' + d.d + '(' + d.w + ')' + (me.recs[d.k] ? '<span class="dotm" role="img" aria-label="기록 있음"></span>' : '') + '</button>';
+    bar.innerHTML = days7.map(function (d) {
+      var on = formDate === d.k;
+      return '<button type="button" class="dsi" data-hd="' + d.k + '" aria-pressed="' + on + '">' + d.m + '.' + d.d + ' ' + d.w + (d.k === todayKey ? '<span class="tdy">오늘</span>' : '') + (me.recs[d.k] && d.k !== todayKey ? '<span class="dotm" role="img" aria-label="기록 있음"></span>' : '') + '</button>';
     }).join('');
+    var ix = days7.map(function (d) { return d.k; }).indexOf(formDate);
+    $('dPrev').disabled = ix <= 0; $('dNext').disabled = ix >= days7.length - 1;
+    var sel = bar.querySelector('[aria-pressed="true"]');
+    if (sel) { var tgt = sel.offsetLeft - (bar.clientWidth - sel.offsetWidth) / 2; bar.scrollLeft = tgt; }
+    updDaySum();
     var past = formDate !== todayKey, lb = dayLabel(formDate);
     note.hidden = !past; if (past) note.textContent = lb + ' 기록을 ' + (me.recs[formDate] ? '고치는' : '새로 쓰는') + ' 중이에요. 제출하면 이 날 기록이 저장돼요.';
     $('dayTitle').textContent = lb; $('h-sub').textContent = lb + ' 기록 제출'; $('submitBtn').textContent = lb + ' 기록 제출';
   }
+  function updDaySum() {
+    var el = $('daySum'); if (!el) return;
+    if (!cur || cur.role !== 'member') { el.innerHTML = ''; return; }
+    var g = getGoal(), r = mealTotals(), t = r.t, e = t.carb * 4 + t.prot * 4 + t.fat * 9;
+    var pc = function (v, m) { return e ? Math.round(v * m / e * 100) : 0; };
+    el.innerHTML = '<span><b>' + n1(Math.round(t.kcal)) + '</b> / ' + n1(g.kcal || 0) + ' kcal</span><span>탄 ' + pc(t.carb, 4) + '%</span><span>단 ' + pc(t.prot, 4) + '%</span><span>지 ' + pc(t.fat, 9) + '%</span>';
+  }
+  function stepDay(n) { var ix = days7.map(function (d) { return d.k; }).indexOf(formDate) + n; if (ix >= 0 && ix < days7.length) switchDay(days7[ix].k); }
+  $('dPrev').addEventListener('click', function (e) { e.stopPropagation(); stepDay(-1); });
+  $('dNext').addEventListener('click', function (e) { e.stopPropagation(); stepDay(1); });
   function switchDay(d) {
     if (!cur || cur.role !== 'member' || saving || d === formDate) return;
     var me = curMember(); if (!me) return;
@@ -1206,7 +1235,7 @@ body.pre-auth { padding-block: 0 40px; }
       nutRow('칼로리', t.kcal, g.kcal, 'kcal', 'var(--accent)', 'kcal') + nutRow('탄수화물', t.carb, g.carb, 'g', 'var(--carb)') + nutRow('단백질', t.prot, g.prot, 'g', 'var(--prot)') + nutRow('지방', t.fat, g.fat, 'g', 'var(--fatc)');
     h += '<ul class="adv">' + advice(t, g, r.n).map(function (a) { return '<li><span class="pill ' + a.tone + '">' + a.label + '</span><span>' + a.text + '</span></li>'; }).join('') + '</ul>';
     if (r.n) h += '<p class="adv-foot">하루가 끝나기 전이라면 남은 끼니에서 채우면 돼요.</p>';
-    $('nutri').innerHTML = h;
+    $('nutri').innerHTML = h; updDaySum();
   }
 
   /* 진행도 */
