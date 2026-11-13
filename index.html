@@ -233,6 +233,7 @@ button.stat { border: 0; background: none; font: inherit; color: inherit; text-a
 button.stat:hover { background: var(--surface-2, rgba(0,0,0,.03)); }
 button.stat:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 button.stat[aria-pressed="true"] { box-shadow: inset 0 -3px 0 var(--accent); }
+.ib + .ib { margin-top: 18px; }
 .gedit { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .exbox { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 14px; }
 .exbox .txt { width: 100%; height: 44px; padding: 0 12px; font-size: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
@@ -637,12 +638,18 @@ body.pre-auth { padding-block: 0 40px; }
       <section class="sec dash" aria-labelledby="h-dash">
     <div class="sec-h"><h2 id="h-dash">내 변화</h2><p>기록이 쌓일수록 정확해져요.</p></div>
     <div class="dcard" id="dashW"></div>
+    <div class="dcard" id="dashI">
+      <div class="d-row"><h3>인바디 변화</h3></div>
+      <p class="d-sub">인바디 기록은 선택사항이에요. 측정했을 때 기록해 주세요.</p>
+      <div class="grid2">
+        <div class="f"><label for="q_muscle">골격근량</label><div class="inp"><input id="q_muscle" type="number" inputmode="decimal" step="0.1" placeholder="예: 33.5"><span class="u">kg</span></div></div>
+        <div class="f"><label for="q_bf">체지방률</label><div class="inp"><input id="q_bf" type="number" inputmode="decimal" step="0.1" placeholder="예: 18.2"><span class="u">%</span></div></div>
+      </div>
+      <div id="dashIC"></div>
+    </div>
     <div class="dcard" id="dashM"></div>
   </section>
-<section class="sec" aria-labelledby="h-sum">
-    <div class="sec-h"><h2 id="h-sum">오늘 현황</h2><p>항목을 누르면 해당 기록으로 이동해요.</p></div>
-    <ul class="sumlist" id="sumList"></ul>
-  </section>
+
 <section class="sec" aria-labelledby="h-sub">
     <div class="sec-h"><h2 id="h-sub">오늘 기록 제출</h2></div>
     <p class="hint" id="saveState">작성 중인 내용은 이 기기에 임시로 남아요. 제출해야 트레이너에게 전달돼요. 식단 사진도 이 기기에 같이 남아요.</p>
@@ -693,21 +700,22 @@ body.pre-auth { padding-block: 0 40px; }
 <div class="pane" data-pane="cond" hidden>
 <section class="sec" aria-labelledby="h-cond">
     <div class="sec-h"><h2 id="h-cond">오늘 몸 상태</h2><p>지금 상태에 가까운 얼굴을 골라 주세요.</p></div>
+    <div class="q"><div class="f" style="max-width:220px"><label for="q_sleep">수면 시간</label><div class="inp"><input id="q_sleep" type="number" inputmode="decimal" step="0.5" value="6.5"><span class="u">시간</span></div></div></div>
     <div class="q"><div class="q-h"><span>컨디션</span></div><div class="rate" data-k="cond"></div></div>
     <div class="q"><div class="q-h"><span>피로도</span></div><div class="rate" data-k="fatigue"></div></div>
     <div class="q"><div class="q-h"><span>스트레스</span></div><div class="rate" data-k="stress"></div></div>
     <div class="q"><div class="q-h"><span>아픈 곳이 있나요?</span><small>여러 개 선택할 수 있어요</small></div><div class="chips" id="pain"></div></div>
     <div class="q" id="painIWrap" hidden><div class="q-h"><span>아픈 정도</span><small>부위마다 골라 주세요</small></div><div id="painI"></div></div>
   </section>
+  <section class="sec dash" aria-label="한 달 컨디션 변화"><div class="dcard" id="condChart"></div></section>
 
     <button type="button" class="btn" data-gohome style="width:100%;margin-top:22px">다 적었어요 · 제출하러 가기</button>
 </div>
 <div class="pane" data-pane="body" hidden>
 <section class="sec" aria-labelledby="h-goal">
-    <div class="sec-h"><h2 id="h-goal">오늘의 기록</h2><p>몸 수치를 적어요. 아침 공복에 잰 체중이면 가장 정확해요.</p></div>
+    <div class="sec-h"><h2 id="h-goal">오늘의 기록</h2><p>체중을 적어요. 아침 공복에 잰 체중이면 가장 정확해요.</p></div>
 <div class="grid2">
       <div class="f"><label for="q_weight">체중</label><div class="inp"><input id="q_weight" type="number" inputmode="decimal" step="0.1" value="74.2"><span class="u">kg</span></div></div>
-      <div class="f"><label for="q_sleep">수면 시간</label><div class="inp"><input id="q_sleep" type="number" inputmode="decimal" step="0.5" value="6.5"><span class="u">시간</span></div></div>
     </div>
     <details class="more" style="margin-bottom:10px">
       <summary>걸음 수·물 섭취 입력 (선택)</summary>
@@ -716,13 +724,7 @@ body.pre-auth { padding-block: 0 40px; }
         <div class="f"><label for="q_water">물 섭취</label><div class="inp"><input id="q_water" type="number" inputmode="decimal" step="0.1" placeholder="예: 1.5"><span class="u">L</span></div></div>
       </div>
     </details>
-    <details class="more">
-      <summary>인바디 수치 입력 (선택)</summary>
-      <div class="grid2">
-        <div class="f"><label for="q_muscle">골격근량</label><div class="inp"><input id="q_muscle" type="number" inputmode="decimal" step="0.1" placeholder="예: 33.5"><span class="u">kg</span></div></div>
-        <div class="f"><label for="q_bf">체지방률</label><div class="inp"><input id="q_bf" type="number" inputmode="decimal" step="0.1" placeholder="예: 18.2"><span class="u">%</span></div></div>
-      </div>
-    </details>
+
       </section>
 
     <button type="button" class="btn" data-gohome style="width:100%;margin-top:22px">다 적었어요 · 제출하러 가기</button>
@@ -1321,17 +1323,18 @@ var EXDB = [["벤치프레스", "가슴"], ["인클라인 벤치프레스", "가
   var sgn = function (v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + n1(Math.abs(v)); };
   function histSeries(key, formId) {
     var pts = HIST.filter(function (h) { return h[key] != null && h.k !== todayKey; }).map(function (h) { return { k: h.k, v: h[key] }; });
+    pts.sort(function (a, b) { return a.k < b.k ? -1 : a.k > b.k ? 1 : 0; });
     var fv = parseFloat($(formId).value);
     if (isFinite(fv) && fv > 0) pts.push({ k: todayKey, v: fv });
     else { var t = HIST.filter(function (h) { return h.k === todayKey && h[key] != null; })[0]; if (t) pts.push({ k: todayKey, v: t[key] }); }
     return pts;
   }
-  function weightChart(pts, from, tw) {
+  function weightChart(pts, from, tw, label) {
     var W = 320, H = 150, L = 34, R = 10, T = 12, B = 22, x0 = dayNum(from), x1 = dayNum(todayKey), span = Math.max(1, x1 - x0);
     var vs = pts.map(function (p) { return p.v; }); if (tw) vs.push(tw);
     var lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs), pad = Math.max(0.5, (hi - lo) * 0.15); lo -= pad; hi += pad;
     var X = function (k) { return L + (dayNum(k) - x0) / span * (W - L - R); }, Y = function (v) { return T + (hi - v) / (hi - lo) * (H - T - B); };
-    var h = '<svg class="d-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="체중 추이 그래프">';
+    var h = '<svg class="d-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + (label || '체중') + ' 추이 그래프">';
     [hi, (hi + lo) / 2, lo].forEach(function (v) { h += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="var(--line)" stroke-width="1"/><text x="' + (L - 5) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end">' + n1(v) + '</text>'; });
     if (tw) h += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(tw).toFixed(1) + '" y2="' + Y(tw).toFixed(1) + '" stroke="var(--good, #1F8F5F)" stroke-width="1.5" stroke-dasharray="5 4"/><text x="' + (W - R) + '" y="' + (Y(tw) - 4).toFixed(1) + '" text-anchor="end" style="fill:var(--good, #1F8F5F)">목표 ' + n1(tw) + '</text>';
     var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p.k).toFixed(1) + ' ' + Y(p.v).toFixed(1); }).join(' ');
@@ -1356,11 +1359,53 @@ var EXDB = [["벤치프레스", "가슴"], ["인클라인 벤치프레스", "가
       h += weightChart(pts, pts[0].k > from ? pts[0].k : from, tw);
       h += '<p class="d-sub">최근 ' + dashRange + '일 변화 <b>' + sgn(pts[pts.length - 1].v - pts[0].v) + 'kg</b> · 기록 ' + pts.length + '일</p>';
     } else h += '<p class="d-empty">기록이 2일 이상 쌓이면 그래프가 그려져요.</p>';
-    var mu = histSeries('mu', 'q_muscle'), bf = histSeries('bf', 'q_bf');
-    if (mu.length || bf.length) {
-      var st = function (name, a, u) { if (!a.length) return ''; var last = a[a.length - 1].v, d = a.length > 1 ? ' <span class="d-sub">(' + sgn(last - a[0].v) + u + ')</span>' : ''; return '<div class="d-stat">' + name + '<b>' + n1(last) + u + d + '</b></div>'; };
-      h += '<div class="d-stats">' + st('골격근량', mu, 'kg') + st('체지방률', bf, '%') + '</div>';
-    }
+    el.innerHTML = h;
+  }
+  function renderDashInbody() {
+    var el = $('dashIC'); if (!el) return;
+    var from = addDays(todayKey, -89), h = '';
+    [['mu', 'q_muscle', '골격근량', 'kg'], ['bf', 'q_bf', '체지방률', '%']].forEach(function (c) {
+      var all = histSeries(c[0], c[1]), pts = all.filter(function (p) { return p.k >= from; });
+      h += '<div class="ib"><div class="d-row"><h3>' + c[2] + '</h3>' + (pts.length ? '<span class="d-big" style="font-size:22px">' + n1(pts[pts.length - 1].v) + '<small>' + c[3] + '</small></span>' : '') + '</div>';
+      if (pts.length >= 2) h += weightChart(pts, pts[0].k > from ? pts[0].k : from, null, c[2]) + '<p class="d-sub">처음 대비 <b>' + sgn(pts[pts.length - 1].v - pts[0].v) + c[3] + '</b> · 측정 ' + pts.length + '번 (최근 90일)</p>';
+      else h += '<p class="d-empty">' + (pts.length ? '한 번 더 측정하면 그래프가 그려져요.' : '아직 기록이 없어요. 인바디를 측정하면 위 칸에 적어 주세요.') + '</p>';
+      h += '</div>';
+    });
+    el.innerHTML = h;
+  }
+  var condKey = 'cond';
+  var CSER = { cond: ['컨디션', '위쪽일수록 컨디션이 좋아요', 5, 1, 'cond'], fatigue: ['피로도', '위쪽일수록 많이 피곤해요', 5, 1, 'fatigue'], stress: ['스트레스', '위쪽일수록 스트레스가 커요', 5, 1, 'stress'], sleep: ['수면', '수면 시간(시간)', null, null, 'sl'] };
+  function condPoints(key) {
+    var f = CSER[key][4], from = addDays(todayKey, -29), pts = HIST.filter(function (x) { return x[f] != null && x.k !== todayKey && x.k >= from; }).map(function (x) { return { k: x.k, v: x[f] }; });
+    var live = key === 'sleep' ? parseFloat($('q_sleep').value) : S[key], tv = null;
+    if (key === 'sleep') { if (isFinite(live) && live > 0) tv = live; } else if (live != null) tv = live;
+    if (tv == null) { var t = HIST.filter(function (x) { return x.k === todayKey && x[f] != null; })[0]; if (t) tv = t[f]; }
+    pts.sort(function (a, b) { return a.k < b.k ? -1 : a.k > b.k ? 1 : 0; });
+    if (tv != null) pts.push({ k: todayKey, v: tv });
+    return pts;
+  }
+  function condSvg(pts, key) {
+    var W = 320, H = 170, L = 30, R = 10, T = 12, B = 22, from = addDays(todayKey, -29), x0 = dayNum(from), span = 29, lo, hi, ticks;
+    if (CSER[key][2]) { lo = 1; hi = 5; ticks = [1, 2, 3, 4, 5]; }
+    else { var vs = pts.map(function (p) { return p.v; }); lo = Math.max(0, Math.floor(Math.min.apply(null, vs) - 1)); hi = Math.ceil(Math.max.apply(null, vs) + 1); ticks = [lo, (lo + hi) / 2, hi]; }
+    var X = function (k) { return L + (dayNum(k) - x0) / span * (W - L - R); }, Y = function (v) { return T + (hi - v) / (hi - lo) * (H - T - B); };
+    var h = '<svg class="d-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="최근 30일 ' + CSER[key][0] + ' 변화 그래프">';
+    ticks.forEach(function (v) { h += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="var(--line)" stroke-width="1"/><text x="' + (L - 5) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end">' + (v % 1 ? v.toFixed(1) : v) + '</text>'; });
+    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p.k).toFixed(1) + ' ' + Y(p.v).toFixed(1); }).join(' ');
+    h += '<path d="' + d + '" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>';
+    pts.forEach(function (p, i) { h += '<circle cx="' + X(p.k).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) + '" r="' + (i === pts.length - 1 ? 4 : 2.8) + '" fill="var(--accent)"/>'; });
+    var f = function (k) { var q = k.split('-'); return +q[1] + '/' + +q[2]; };
+    return h + '<text x="' + L + '" y="' + (H - 6) + '" text-anchor="start">' + f(from) + '</text><text x="' + (W - R) + '" y="' + (H - 6) + '" text-anchor="end">' + f(todayKey) + '</text></svg>';
+  }
+  function renderCondChart() {
+    var el = $('condChart'); if (!el || !cur || cur.role !== 'member') return;
+    var pts = condPoints(condKey), c = CSER[condKey];
+    var seg = '<span class="d-seg" role="group" aria-label="볼 항목">' + Object.keys(CSER).map(function (k) { return '<button type="button" data-ck="' + k + '" aria-pressed="' + (k === condKey) + '">' + CSER[k][0] + '</button>'; }).join('') + '</span>';
+    var h = '<div class="d-row"><h3>최근 30일 변화</h3></div><div>' + seg + '</div>';
+    if (pts.length >= 2) {
+      var avg = pts.reduce(function (a, p) { return a + p.v; }, 0) / pts.length;
+      h += '<p class="d-sub">' + c[1] + '</p>' + condSvg(pts, condKey) + '<p class="d-sub">30일 평균 <b>' + n1(avg) + (condKey === 'sleep' ? '시간' : '점') + '</b> · 기록 ' + pts.length + '일</p>';
+    } else h += '<p class="d-empty">기록이 2일 이상 쌓이면 한 달 변화 그래프가 그려져요.</p>';
     el.innerHTML = h;
   }
   function renderDashMeal() {
@@ -1380,7 +1425,8 @@ var EXDB = [["벤치프레스", "가슴"], ["인클라인 벤치프레스", "가
     if (wk.length) h += '<p class="d-sub">어제까지 최근 7일 평균 <b>' + n0(wk.reduce(function (a, x) { return a + x.kcal; }, 0) / wk.length) + ' kcal</b> (' + wk.length + '일 기록)</p>';
     el.innerHTML = h;
   }
-  function renderDash() { if (!cur || cur.role !== 'member') return; renderDashWeight(); renderDashMeal(); }
+  function renderDash() { if (!cur || cur.role !== 'member') return; renderDashWeight(); renderDashInbody(); renderDashMeal(); renderCondChart(); }
+  $('condChart').addEventListener('click', function (e) { var b = e.target.closest('button[data-ck]'); if (!b) return; e.stopPropagation(); condKey = b.getAttribute('data-ck'); renderCondChart(); });
   $('dashW').addEventListener('click', function (e) { if (e.target.closest('[data-open-settings]')) { showTab('settings'); return; } var b = e.target.closest('button[data-range]'); if (b) { dashRange = +b.getAttribute('data-range'); renderDashWeight(); } });
 
   /* ---------- 회원 하단 메뉴 ---------- */
@@ -1395,10 +1441,9 @@ var EXDB = [["벤치프레스", "가슴"], ["인클라인 벤치프레스", "가
   }
   $('setBtn').addEventListener('click', function () { renderSettings(); showTab('settings'); });
   $('tabbar').addEventListener('click', function (e) { var b = e.target.closest('button[data-tab]'); if (b) showTab(b.getAttribute('data-tab')); });
-  $('sumList').addEventListener('click', function (e) { var b = e.target.closest('button[data-go]'); if (b) showTab(b.getAttribute('data-go')); });
   Array.prototype.forEach.call(document.querySelectorAll('[data-gohome]'), function (b) { b.addEventListener('click', function () { showTab('home'); }); });
   $('fbBanner').addEventListener('click', function (e) { if (!e.target.closest('button')) showTab('meal'); });
-  var TAB_OF = { '체중': 'body', '수면': 'body', '운동': 'wk', '컨디션': 'cond', '피로도': 'cond', '스트레스': 'cond', '통증': 'cond', '아침 식단': 'meal', '점심 식단': 'meal', '저녁 식단': 'meal' };
+  var TAB_OF = { '체중': 'body', '수면': 'cond', '운동': 'wk', '컨디션': 'cond', '피로도': 'cond', '스트레스': 'cond', '통증': 'cond', '아침 식단': 'meal', '점심 식단': 'meal', '저녁 식단': 'meal' };
   function renderTabs(c) {
     var cnt = {}, tot = {};
     c.forEach(function (x) { var t = TAB_OF[x[0]]; tot[t] = (tot[t] || 0) + 1; if (!x[1]) cnt[t] = (cnt[t] || 0) + 1; });
@@ -1406,8 +1451,6 @@ var EXDB = [["벤치프레스", "가슴"], ["인클라인 벤치프레스", "가
       var t = b.getAttribute('data-tab'), d = b.querySelector('.bdg'), n = cnt[t] || 0;
       d.hidden = !n; d.textContent = n; b.setAttribute('aria-label', TABS[t] + (n ? ', 남은 항목 ' + n + '개' : ''));
     });
-    var row = function (go, name, t) { var n = cnt[t] || 0, all = tot[t] || 0; return '<li><button type="button" data-go="' + go + '"><b>' + name + '</b><span class="st' + (n ? '' : ' ok') + '">' + (n ? (all - n) + ' / ' + all + ' 입력' : '완료') + '</span></button></li>'; };
-    $('sumList').innerHTML = row('meal', '식단 (아침·점심·저녁)', 'meal') + row('wk', '운동', 'wk') + row('cond', '컨디션·통증', 'cond') + row('body', '오늘의 기록 (체중·수면)', 'body');
   }
   function renderProgress() {
     var c = checklist(), done = c.filter(function (x) { return x[1]; }).length, left = c.filter(function (x) { return !x[1]; }).map(function (x) { return x[0]; });
@@ -1416,6 +1459,7 @@ var EXDB = [["벤치프레스", "가슴"], ["인클라인 벤치프레스", "가
     $('progNum').textContent = done; $('progTot').textContent = c.length; $('progBar').setAttribute('aria-valuemax', c.length);
     $('progText').textContent = left.length ? '남은 항목: ' + left.slice(0, 3).join(', ') + (left.length > 3 ? ' 외 ' + (left.length - 3) + '개' : '') : '오늘 체크를 모두 마쳤어요';
     renderTabs(c);
+    try { renderCondChart(); } catch (e) { }
     return { done: done, total: c.length };
   }
   function renderGoalHint() {
@@ -2156,7 +2200,7 @@ var EXDB = [["벤치프레스", "가슴"], ["인클라인 벤치프레스", "가
         sb.from('meal_photos').select('id,member_id,record_date,slot,path,created_at').gte('record_date', from7),
         sb.from('feedback').select('id,member_id,record_date,slot,author_name,text,created_at').gte('record_date', from7)
       ];
-      if (!staff) qs.push(sb.from('daily_records').select('record_date,weight,body_fat,muscle,tot').gte('record_date', addDays(todayKey, -119)).order('record_date', { ascending: true }));
+      if (!staff) qs.push(sb.from('daily_records').select('record_date,weight,body_fat,muscle,tot,cond,fatigue,stress,sleep').gte('record_date', addDays(todayKey, -119)).order('record_date', { ascending: true }));
       if (staff) { qs.push(sb.from('invites').select('*').order('created_at', { ascending: false }).limit(40)); qs.push(sb.from('intake').select('*')); }
       var rs = await Promise.all(qs), i;
       if (rs[0].error && /trainer_id/.test(String(rs[0].error.message || ''))) {   /* add_trainer.sql 을 아직 안 돌린 DB: 담당 없이도 목록은 보이게 */
@@ -2184,7 +2228,7 @@ var EXDB = [["벤치프레스", "가슴"], ["인클라인 벤치프레스", "가
         renderInvites();
         if (selected == null) renderStaff(); else safeDetail();
       } else {
-        HIST = (rs[4].data || []).map(function (r) { return { k: r.record_date, w: r.weight == null ? null : +r.weight, mu: r.muscle == null ? null : +r.muscle, bf: r.body_fat == null ? null : +r.body_fat, kcal: r.tot && r.tot.kcal != null ? +r.tot.kcal : null }; });
+        HIST = (rs[4].data || []).map(function (r) { return { k: r.record_date, w: r.weight == null ? null : +r.weight, mu: r.muscle == null ? null : +r.muscle, bf: r.body_fat == null ? null : +r.body_fat, kcal: r.tot && r.tot.kcal != null ? +r.tot.kcal : null, cond: r.cond == null ? null : +r.cond, fatigue: r.fatigue == null ? null : +r.fatigue, stress: r.stress == null ? null : +r.stress, sl: r.sleep == null ? null : +r.sleep }; });
         mergePhotos(); softRenderMeals(); renderFbBanner(); renderDayBar(); renderDash();
       }
     } catch (e) {
